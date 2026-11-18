@@ -5,7 +5,7 @@
 .hero-note { margin-top: var(--s-4); font-size: var(--fs-sm); color: var(--text-muted); }
 .launch-actions { display: flex; flex-wrap: wrap; gap: var(--s-3); margin-top: var(--s-5); }
 .launch-actions .btn { min-height: 44px; }
-.site-head nav { margin-left: auto; }
+.site-head nav { display: block; margin-left: auto; }
 .guide-band { background: var(--surface); }
 .guide-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4); margin-top: var(--s-5); }
 .guide-grid a { display: grid; align-content: start; gap: var(--s-2); min-height: 100%; padding: var(--s-4); border: 1px solid var(--border); border-radius: var(--r-lg); color: var(--text); text-decoration: none; }

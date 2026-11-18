@@ -185,6 +185,8 @@ def build_docs(css_url: str, sprite: str) -> list[str]:
         description = next((t.content for t in tokens[2:] if t.type == "inline"), title)
         headings = set()
         for i, token in enumerate(tokens):
+            if token.type == "table_open":
+                token.attrSet("tabindex", "0")
             if token.type == "heading_open":
                 heading = tokens[i + 1].content.lower()
                 base = re.sub(r"[^\w -]", "", heading).replace(" ", "-")
@@ -220,7 +222,8 @@ def build_docs(css_url: str, sprite: str) -> list[str]:
             html = html.replace("{{" + key + "}}", value)
         dest = OUT / route.lstrip("/") / "index.html"
         dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(html.replace("{{CONTENT}}", md.renderer.render(tokens, md.options, {})), encoding="utf-8")
+        content = md.renderer.render(tokens, md.options, {}).replace("<pre>", '<pre tabindex="0">')
+        dest.write_text(html.replace("{{CONTENT}}", content), encoding="utf-8")
     shutil.copytree(docs / "images", OUT / "docs/images")
     schema = OUT / "schema/audit/v1"
     schema.parent.mkdir(parents=True)
