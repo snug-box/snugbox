@@ -1,0 +1,20 @@
+name: An idea
+description: A fix Snugbox should offer, a provider it should know, or something it should report.
+labels: [idea]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem it solves
+      description: What you are trying to do, and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+  - type: textarea
+    id: undo
+    attributes:
+      label: For a new fix, how it is undone
+      description: Every fix Snugbox applies must be put back by snugbox undo. Say what undo would restore.

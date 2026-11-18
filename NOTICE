@@ -1,0 +1,8 @@
+Snugbox
+Copyright 2026 The Snugbox Authors
+
+This product includes software developed by The Snugbox Authors and is
+licensed under the Apache License, Version 2.0. See LICENSE.
+
+Third-party Go modules used by the agent, with their licences, are listed
+in THIRD_PARTY_NOTICES.md.

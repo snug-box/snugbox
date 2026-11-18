@@ -1,0 +1,17 @@
+version: v2
+modules:
+  - path: proto
+lint:
+  use:
+    - STANDARD
+    - COMMENTS
+  except:
+    # Every message and enum is described where it needs it; one-line
+    # comments on self-explaining fields such as Container.name add nothing.
+    - COMMENT_FIELD
+    - COMMENT_ENUM_VALUE
+    - COMMENT_MESSAGE
+    - COMMENT_ONEOF
+breaking:
+  use:
+    - FILE

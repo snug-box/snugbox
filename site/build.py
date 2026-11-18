@@ -1,0 +1,300 @@
+#!/usr/bin/env python3
+"""Build the snugbox.dev website into public/.
+
+The page needs no JavaScript, so the server can send a strict
+Content-Security-Policy. The Recursive font is served from the site itself,
+so visitors' browsers never contact a third party.
+
+    py -3 build.py                    build public/ from src/ and fonts/
+    py -3 build.py --og               also write public/_og.html; a 1200 x 630
+                                      screenshot of it served over HTTP is src/og.png
+    py -3 build.py --from-preview F   first regenerate src/design.css,
+                                      src/sprite.svg, src/licenses.txt and
+                                      src/icons/ from the design preview F
+
+The design preview is kept outside this repository. design.css holds the
+preview's tokens and the styles the site uses; extra.css holds the site's own.
+"""
+from __future__ import annotations
+
+import gzip
+import hashlib
+import re
+import shutil
+import sys
+from html import escape
+from posixpath import normpath
+from urllib.parse import urlsplit, urlunsplit
+
+from markdown_it import MarkdownIt
+import urllib.request
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+SRC = ROOT / "src"
+FONTS = ROOT / "fonts"
+OUT = ROOT / "public"
+LICENSE = ROOT.parent / "LICENSE"
+
+FONT_CSS = ("https://fonts.googleapis.com/css2?family=Recursive:wght,CASL,MONO"
+            "@300..800,0..1,0..1&display=swap")
+OFL_URL = "https://raw.githubusercontent.com/google/fonts/main/ofl/recursive/OFL.txt"
+BROWSER = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+           "(KHTML, like Gecko) Chrome/131.0 Safari/537.36")
+
+# Sections of the preview's stylesheet the site uses: (opening comment, the
+# comment of the next section, or None for the end of the stylesheet).
+SECTIONS = [("/* Tokens.", "/* Preview bar */"),
+            ("/* Controls", "/* App shell */"),
+            ("/* Website view */", None)]
+# Single rules taken from the sections left out, by selector prefix.
+PICK = (".brand", ".fill-bar", ".ok {", ".warnc {", ".code", ".copy-row", ".muted")
+ICONS = ("i-chevron-down", "i-gauge", "i-wrench", "i-trending-down")
+DARK = '[data-theme="dark"]'
+COMPRESS = {".html", ".css", ".svg", ".txt", ".xml", ".webmanifest", ".ico"}
+
+
+def fetch(url: str) -> bytes:
+    req = urllib.request.Request(url, headers={"User-Agent": BROWSER})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return resp.read()
+
+
+def short_hash(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()[:10]
+
+
+def font_face() -> tuple[bytes, str]:
+    """Returns the latin Recursive font and its @font-face block, url left as {URL}."""
+    woff2, face = FONTS / "recursive-latin.woff2", FONTS / "recursive-latin.css"
+    if not woff2.exists():
+        FONTS.mkdir(exist_ok=True)
+        css = fetch(FONT_CSS).decode()
+        block = re.search(r"/\* latin \*/\s*(@font-face\s*\{.*?\})", css, re.S)
+        if not block:
+            sys.exit("no latin block in the Google Fonts response")
+        url = re.search(r"url\((https://[^)]+\.woff2)\)", block.group(1)).group(1)
+        woff2.write_bytes(fetch(url))
+        face.write_text(re.sub(r"url\([^)]+\)", "url({URL})", block.group(1)) + "\n", encoding="utf-8")
+        (FONTS / "OFL.txt").write_bytes(fetch(OFL_URL))
+        (FONTS / "SOURCE.txt").write_text(f"{url}\nfrom {FONT_CSS}\nfetched {dt.date.today()}\n", encoding="utf-8")
+    return woff2.read_bytes(), face.read_text(encoding="utf-8")
+
+
+def block_end(css: str, start: int) -> int:
+    """Index just past the brace block that opens at or after start."""
+    depth, i = 0, css.index("{", start)
+    while True:
+        if css[i] == "{":
+            depth += 1
+        elif css[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+
+
+def follow_system_theme(css: str) -> str:
+    """Rewrites the preview's [data-theme="dark"] rules as prefers-color-scheme rules."""
+    out, pos = [], 0
+    while (at := css.find(DARK, pos)) != -1:
+        end = block_end(css, at)
+        head, body = css[at:end].split("{", 1)
+        selector = head[len(DARK):].strip() or ":root"
+        out.append(css[pos:at])
+        out.append(f"@media (prefers-color-scheme: dark) {{ {selector} {{{body} }}")
+        pos = end
+    out.append(css[pos:])
+    return "".join(out)
+
+
+def design_css(preview: str) -> str:
+    full = re.search(r"<style>(.*?)</style>", preview, re.S).group(1)
+    parts = []
+    for first, nxt in SECTIONS:
+        start = full.index(first)
+        end = full.index(nxt, start) if nxt else len(full)
+        parts.append(full[start:end].rstrip())
+    kept = "\n".join(parts)
+    picked = []
+    for m in re.finditer(r"^(?=\S)", full, re.M):
+        if full.startswith(PICK, m.start()):
+            rule = full[m.start():block_end(full, m.start())]
+            if rule not in kept and rule not in picked:
+                picked.append(rule)
+    header = "/* Generated by build.py --from-preview from the Snugbox design preview. Don't edit; change extra.css. */"
+    css = "\n".join([header, kept, "/* Rules picked from other sections of the preview */", *picked])
+    return follow_system_theme(css) + "\n"
+
+
+def sprite_symbols(preview: str) -> str:
+    symbols = []
+    for name in ("logo-mark", "logo-word", *ICONS):
+        m = re.search(rf'<symbol id="{name}".*?</symbol>', preview, re.S)
+        if not m:
+            sys.exit(f"symbol {name} missing from the preview")
+        symbols.append(m.group(0))
+    body = "\n".join(symbols)
+    body = body.replace('style="fill: var(--mark-box)"', 'class="mk-box"')
+    body = body.replace('style="fill: var(--mark-module)"', 'class="mk-module"')
+    return ('<svg xmlns="http://www.w3.org/2000/svg" class="sprite" aria-hidden="true" focusable="false">\n'
+            f"{body}\n</svg>\n")
+
+
+def licences(preview: str) -> str:
+    notice = re.search(r"<!--\s*Snugbox design preview\. Third-party parts in this file:(.*?)-->", preview, re.S)
+    text = notice.group(1).replace(
+        "3. Font: Recursive, SIL Open Font License 1.1, loaded from Google Fonts at run time, not embedded.",
+        "3. Font: Recursive, SIL Open Font License 1.1, served from this site. Licence: /fonts/OFL.txt")
+    return "Third-party parts of snugbox.dev\n" + text.rstrip() + "\n"
+
+
+def from_preview(path: Path) -> None:
+    preview = path.read_text(encoding="utf-8")
+    (SRC / "design.css").write_text(design_css(preview), encoding="utf-8")
+    (SRC / "sprite.svg").write_text(sprite_symbols(preview), encoding="utf-8")
+    (SRC / "licenses.txt").write_text(licences(preview), encoding="utf-8")
+    if (SRC / "icons").exists():
+        shutil.rmtree(SRC / "icons")
+    shutil.copytree(path.parent / "icons", SRC / "icons")
+    print(f"regenerated design.css, sprite.svg, licenses.txt and icons/ from {path}")
+
+
+def check_classes(html: str, css: str, page: str) -> list[str]:
+    used = {c for attr in re.findall(r'class="([^"]+)"', html) for c in attr.split()}
+    return [f"{page}: .{c}" for c in sorted(used) if not re.search(rf"\.{re.escape(c)}(?![\w-])", css)]
+
+
+def build_docs(css_url: str, sprite: str) -> list[str]:
+    repo = SRC.parent.parent
+    docs = repo / "docs"
+    index = SRC / "docs.md"
+    pages = {index: "/docs/"}
+    for source in sorted(docs.rglob("*.md")):
+        path = source.relative_to(docs)
+        if path.parts[0] in {"adr", "maintaining.md"}:
+            continue
+        slug = path.parent if path.name == "README.md" else path.with_suffix("")
+        pages[source] = f"/docs/{slug.as_posix()}/"
+
+    template = (SRC / "doc.html").read_text(encoding="utf-8")
+    md = MarkdownIt("commonmark", {"html": False}).enable("table")
+    for source, route in pages.items():
+        tokens = md.parse(source.read_text(encoding="utf-8"))
+        title = tokens[1].content
+        description = next((t.content for t in tokens[2:] if t.type == "inline"), title)
+        headings = set()
+        for i, token in enumerate(tokens):
+            if token.type == "heading_open":
+                heading = tokens[i + 1].content.lower()
+                base = re.sub(r"[^\w -]", "", heading).replace(" ", "-")
+                slug, suffix = base, 1
+                while slug in headings:
+                    slug, suffix = f"{base}-{suffix}", suffix + 1
+                headings.add(slug)
+                token.attrSet("id", slug)
+            for child in token.children or ():
+                attr = {"link_open": "href", "image": "src"}.get(child.type)
+                if not attr:
+                    continue
+                url = urlsplit(child.attrGet(attr))
+                if not url.path or url.scheme or url.netloc or url.path.startswith("/"):
+                    continue
+                target = Path(normpath((source.parent / url.path).as_posix()))
+                if target in pages:
+                    path = pages[target]
+                elif target == repo / "schema/audit/v1.json":
+                    path = "/schema/audit/v1"
+                elif target.is_relative_to(docs / "images"):
+                    path = "/docs/images/" + target.name
+                elif target.is_relative_to(repo):
+                    path = "https://github.com/snug-box/snugbox/blob/main/" + target.relative_to(repo).as_posix()
+                else:
+                    continue
+                child.attrSet(attr, urlunsplit(("", "", path, url.query, url.fragment)))
+        html = template
+        for key, value in {
+            "TITLE": escape(title), "DESCRIPTION": escape(re.sub(r"[`*]", "", description)[:160]),
+            "CANONICAL": route, "CSS": css_url, "SPRITE": sprite,
+        }.items():
+            html = html.replace("{{" + key + "}}", value)
+        dest = OUT / route.lstrip("/") / "index.html"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(html.replace("{{CONTENT}}", md.renderer.render(tokens, md.options, {})), encoding="utf-8")
+    shutil.copytree(docs / "images", OUT / "docs/images")
+    schema = OUT / "schema/audit/v1"
+    schema.parent.mkdir(parents=True)
+    shutil.copyfile(repo / "schema/audit/v1.json", schema)
+    return list(pages.values())
+
+
+def main() -> None:
+    args = sys.argv[1:]
+    if "--from-preview" in args:
+        from_preview(Path(args[args.index("--from-preview") + 1]))
+    render_og = "--og" in args
+
+    font, face = font_face()
+    font_name = f"recursive.{short_hash(font)}.woff2"
+    face = face.replace("{URL}", f"/fonts/{font_name}").replace("font-display: swap", "font-display: optional")
+    css = "\n".join([face.strip(), (SRC / "design.css").read_text(encoding="utf-8"),
+                     (SRC / "extra.css").read_text(encoding="utf-8")])
+    if css.count("{") != css.count("}"):
+        sys.exit("the stylesheet's braces don't balance")
+    css_name = f"site.{short_hash(css.encode())}.css"
+    sprite = (SRC / "sprite.svg").read_text(encoding="utf-8").strip()
+    if "style=" in sprite:
+        sys.exit("an inline style is left in the sprite; the CSP forbids it")
+
+    if OUT.exists():
+        shutil.rmtree(OUT)
+    (OUT / "assets").mkdir(parents=True)
+    (OUT / "fonts").mkdir()
+    (OUT / "assets" / css_name).write_text(css, encoding="utf-8")
+    (OUT / "fonts" / font_name).write_bytes(font)
+    shutil.copy(FONTS / "OFL.txt", OUT / "fonts" / "OFL.txt")
+    shutil.copytree(SRC / "icons", OUT / "icons", ignore=shutil.ignore_patterns("site.webmanifest"))
+    shutil.copy(SRC / "icons" / "site.webmanifest", OUT / "site.webmanifest")
+    shutil.copy(SRC / "icons" / "favicon.ico", OUT / "favicon.ico")
+    shutil.copy(LICENSE, OUT / "license.txt")
+    shutil.copy(SRC / "licenses.txt", OUT / "licenses.txt")
+    if (SRC / "og.png").exists():
+        shutil.copy(SRC / "og.png", OUT / "og.png")
+    elif not render_og:
+        sys.exit("src/og.png is missing: run build.py --og and screenshot public/_og.html at 1200 x 630")
+
+    missing = []
+    pages = {"index.html": "index.html", "404.html": "404.html"}
+    if render_og:
+        pages["og.html"] = "_og.html"
+    for page, out_name in pages.items():
+        html = (SRC / page).read_text(encoding="utf-8")
+        html = (html.replace("{{CSS}}", f"/assets/{css_name}")
+                    .replace("{{FONT}}", f"/fonts/{font_name}")
+                    .replace("{{SPRITE}}", sprite))
+        if re.search(r"\sstyle=|<script|\{\{", html):
+            sys.exit(f"{page} has an inline style, a script or a placeholder left; the CSP forbids the first two")
+        missing += check_classes(html, css, page)
+        (OUT / out_name).write_text(html, encoding="utf-8")
+
+    routes = ["/", *build_docs(f"/assets/{css_name}", sprite)]
+    (OUT / "robots.txt").write_text("User-agent: *\nAllow: /\n\nSitemap: https://snugbox.dev/sitemap.xml\n", encoding="utf-8")
+    (OUT / "sitemap.xml").write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + "".join(f"  <url><loc>https://snugbox.dev{route}</loc></url>\n" for route in routes) +
+        "</urlset>\n", encoding="utf-8")
+
+    size = sum(f.stat().st_size for f in OUT.rglob("*") if f.is_file())
+    # Pages go out with Cache-Control no-transform, which stops Caddy and
+    # Cloudflare compressing them, so they are compressed here once and Caddy
+    # serves the .gz copy (file_server precompressed).
+    for f in [p for p in OUT.rglob("*") if p.suffix in COMPRESS]:
+        f.with_name(f.name + ".gz").write_bytes(gzip.compress(f.read_bytes(), compresslevel=9, mtime=0))
+    print(f"built {OUT} ({size // 1024} KiB): {css_name} {len(css) // 1024} KiB, {font_name} {len(font) // 1024} KiB")
+    if missing:
+        sys.exit("classes with no CSS rule:\n  " + "\n  ".join(missing))
+
+
+if __name__ == "__main__":
+    main()

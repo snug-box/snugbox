@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="931" height="412" viewBox="0 0 931 412" role="img" aria-labelledby="title">
+<title id="title">$ snugbox plan</title>
+<rect x="0.5" y="0.5" width="930" height="411" rx="10" fill="#0d1117" stroke="#30363d"/>
+<path d="M0.5 10.5a10 10 0 0 1 10-10h910a10 10 0 0 1 10 10v22h-930z" fill="#161b22"/>
+<line x1="0.5" y1="32.5" x2="930.5" y2="32.5" stroke="#30363d"/>
+<circle cx="20" cy="17" r="6" fill="#ff5f57"/><circle cx="40" cy="17" r="6" fill="#febc2e"/><circle cx="60" cy="17" r="6" fill="#28c840"/>
+<text x="465.5" y="21.5" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="12" text-anchor="middle">snugbox plan</text>
+<g fill="#e6edf3" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace" font-size="14" xml:space="preserve" style="white-space: pre">
+<text x="22" y="58"><tspan fill="#7ee787">$</tspan> snugbox plan</text>
+<text x="22" y="79">This box pays for 8 GiB and needs 2.84 GiB. A 4 GiB plan fits.</text>
+<text x="22" y="121"><tspan fill="#f2b33d" font-weight="700">PLANS THAT FIT</tspan><tspan fill="#8b949e">   plan              vCPU    memory     usable        disk  a month    saving  how</tspan></text>
+<text x="22" y="142">  Vultr          vc2-2c-4gb           2     4 GiB   3.72 GiB   74.51 GiB   $20.00    $28.00  new server</text>
+<text x="22" y="163">  Hetzner        CPX22                2  3.73 GiB   3.46 GiB   74.51 GiB   $23.59    $24.41  new server</text>
+<text x="22" y="184">  AWS Lightsail  4 GB                 2  3.73 GiB   3.46 GiB   74.51 GiB   $24.00    $24.00  new instance</text>
+<text x="22" y="205">  DigitalOcean   Basic 4 GiB          2     4 GiB   3.72 GiB      80 GiB   $24.00    $24.00  new server</text>
+<text x="22" y="226">  Akamai Linode  Linode 4GB           2     4 GiB   3.72 GiB      80 GiB   $24.00    $24.00  new server</text>
+<text x="22" y="247">  Vultr          vc2-4c-8gb           4     8 GiB   7.44 GiB  149.01 GiB   $40.00     $8.00  new server</text>
+<text x="22" y="268">  Hetzner        CPX32                4  7.45 GiB   6.93 GiB  149.01 GiB   $42.59     $5.41  new server</text>
+<text x="22" y="289">  AWS Lightsail  8 GB                 2  7.45 GiB   6.93 GiB  149.01 GiB   $44.00     $4.00  new instance</text>
+<text x="22" y="310">  DigitalOcean   Basic 8 GiB          4     8 GiB   7.44 GiB     160 GiB   $48.00     $0.00  current plan</text>
+<text x="22" y="352">Usable memory is 93% of the advertised size until Snugbox has measured the plan.</text>
+<text x="22" y="373">List prices checked 31 Oct 2026, before VAT. Hetzner adds $0.60 a month for IPv4.</text>
+</g>
+</svg>

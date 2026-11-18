@@ -1,0 +1,301 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://snugbox.dev/schema/audit/v1",
+  "title": "Snugbox audit report, version 1",
+  "description": "What snugbox audit --json writes. Memory is in bytes and money in cents of advice.currency. A field is removed only in a new major version, with a new schema URL; new fields and new values of a kind can appear in any release, so a reader must ignore what it doesn't know.",
+  "type": "object",
+  "required": ["schema", "version", "host", "started", "ended", "window_seconds", "samples", "root", "headline", "machine", "provider", "estimate", "advice", "risks", "fixes", "workloads", "idle", "kernel_other", "data_quality"],
+  "properties": {
+    "schema": { "const": "https://snugbox.dev/schema/audit/v1" },
+    "version": { "type": "string", "description": "The version of snugbox that wrote the report." },
+    "host": { "type": "string", "description": "The box's host name." },
+    "started": { "type": "string", "format": "date-time" },
+    "ended": { "type": "string", "format": "date-time" },
+    "window_seconds": { "type": "number", "minimum": 0, "description": "How long the report's data covers." },
+    "samples": { "type": "integer", "minimum": 0 },
+    "root": { "type": "boolean", "description": "Whether the audit ran as root, which lets it read every process's memory." },
+    "headline": { "type": "string", "description": "The report's first line, for a person." },
+    "machine": { "$ref": "#/$defs/machine" },
+    "provider": { "$ref": "#/$defs/provider" },
+    "estimate": { "$ref": "#/$defs/estimate" },
+    "advice": { "$ref": "#/$defs/advice" },
+    "risks": { "type": "array", "items": { "$ref": "#/$defs/risk" } },
+    "fixes": { "type": "array", "items": { "$ref": "#/$defs/fix" } },
+    "workloads": { "type": "array", "items": { "$ref": "#/$defs/workload" } },
+    "idle": { "type": "array", "items": { "$ref": "#/$defs/idle" } },
+    "kernel_other": { "$ref": "#/$defs/stats", "description": "Memory the kernel and everything outside the workloads used." },
+    "data_quality": { "$ref": "#/$defs/data_quality" }
+  },
+  "$defs": {
+    "bytes": { "type": "integer", "minimum": 0 },
+    "machine": {
+      "type": "object",
+      "required": ["kernel", "os", "virtualization", "cpus", "mem_total_bytes", "swap_bytes", "zswap_enabled", "zswap_available", "transparent_hugepages", "overcommit_memory", "oom_daemon", "oom_policy", "cgroup_v2", "uptime_seconds"],
+      "properties": {
+        "kernel": { "type": "string", "description": "The kernel release, as uname -r prints it." },
+        "os": { "type": "string", "description": "PRETTY_NAME from /etc/os-release." },
+        "virtualization": { "type": "string", "description": "What systemd-detect-virt says, such as kvm, microsoft or none, or lxc for a container." },
+        "cpus": { "type": "integer", "minimum": 0 },
+        "mem_total_bytes": { "$ref": "#/$defs/bytes" },
+        "swap_bytes": { "$ref": "#/$defs/bytes" },
+        "zswap_enabled": { "type": "boolean" },
+        "zswap_available": { "type": "boolean" },
+        "transparent_hugepages": { "type": "string", "description": "The selected value of /sys/kernel/mm/transparent_hugepage/enabled, such as madvise." },
+        "overcommit_memory": { "type": "integer", "description": "vm.overcommit_memory, or -1 when it couldn't be read." },
+        "oom_daemon": { "type": "string", "description": "The early out-of-memory killer that runs: systemd-oomd, earlyoom or nohang, or empty." },
+        "oom_policy": {
+          "description": "A systemd-oomd policy for a slice that the box set itself, which Snugbox leaves alone, or null.",
+          "anyOf": [
+            {
+              "type": "object",
+              "required": ["slice", "value", "file"],
+              "properties": {
+                "slice": { "type": "string", "description": "system.slice or user.slice." },
+                "value": { "type": "string", "description": "What ManagedOOMMemoryPressure= is set to, such as kill." },
+                "file": { "type": "string", "description": "The unit file or drop-in that set it last." }
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "cgroup_v2": { "type": "boolean" },
+        "uptime_seconds": { "type": "number", "minimum": 0 }
+      }
+    },
+    "provider": {
+      "type": "object",
+      "required": ["id", "region", "from_metadata"],
+      "properties": {
+        "id": { "type": "string", "description": "The provider's id in the price catalogue, such as digitalocean, or empty when unknown." },
+        "region": { "type": "string" },
+        "instance_type": { "type": "string", "description": "The plan the provider says this box is, when it says." },
+        "from_metadata": { "type": "boolean", "description": "Whether the provider answered on its metadata service." }
+      }
+    },
+    "estimate": {
+      "type": "object",
+      "required": ["need_bytes", "need_from_hard", "headroom_bytes", "headroom_rule", "peak_addition_bytes", "cache_bytes", "snug_bytes", "confidence", "coverage", "cache_overestimate", "upward"],
+      "properties": {
+        "need_bytes": { "$ref": "#/$defs/bytes", "description": "The memory the box needs: the larger of the highest total the kernel couldn't reclaim and the 99.9th percentile of the total." },
+        "need_from_hard": { "type": "boolean", "description": "Whether the need came from the highest total the kernel couldn't reclaim." },
+        "headroom_bytes": { "$ref": "#/$defs/bytes" },
+        "headroom_rule": { "type": "string", "description": "Which of the three headroom rules was largest: share, minimum or burst." },
+        "peak_addition_bytes": { "$ref": "#/$defs/bytes", "description": "Headroom added because memory.peak shows the workloads used more than Snugbox saw." },
+        "cache_bytes": { "$ref": "#/$defs/bytes", "description": "File cache kept on top of the need." },
+        "snug_bytes": { "$ref": "#/$defs/bytes", "description": "The size that fits: the need, the headroom and the cache together." },
+        "confidence": { "type": "string", "description": "low, medium or high, from how long and how completely the box was watched." },
+        "coverage": { "type": "number", "minimum": 0, "maximum": 1, "description": "The share of the window that has samples." },
+        "cache_overestimate": { "type": "boolean" },
+        "upward": {
+          "type": "object",
+          "description": "Signs the box needs more memory than it shows.",
+          "required": ["any", "pressure_full_share", "pressure_since_boot", "recent_kills", "undated_kills", "swap_in_intervals", "intervals"],
+          "properties": {
+            "any": { "type": "boolean" },
+            "pressure_full_share": { "type": "number", "minimum": 0 },
+            "pressure_since_boot": { "type": "boolean" },
+            "recent_kills": { "type": "integer", "minimum": 0 },
+            "undated_kills": { "type": "integer", "minimum": 0 },
+            "swap_in_intervals": { "type": "integer", "minimum": 0 },
+            "intervals": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "required": ["provider", "id", "label", "vcpus", "ram_bytes", "usable_bytes", "disk_bytes", "monthly_cents", "converted_from_eur", "available", "arm"],
+      "properties": {
+        "provider": { "type": "string" },
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "vcpus": { "type": "integer", "minimum": 0 },
+        "ram_bytes": { "$ref": "#/$defs/bytes" },
+        "usable_bytes": { "$ref": "#/$defs/bytes", "description": "The memory the plan really gives, a share of its advertised size." },
+        "disk_bytes": { "$ref": "#/$defs/bytes" },
+        "monthly_cents": { "type": "integer" },
+        "converted_from_eur": { "type": "boolean", "description": "Whether the price was converted from the provider's euro price." },
+        "available": { "type": "boolean", "description": "Whether the provider takes new orders for the plan." },
+        "arm": { "type": "boolean" },
+        "move": { "type": "string", "description": "How to move to the plan, for a person." },
+        "saving_cents": { "type": "integer", "description": "What the plan saves a month against the current one, when that is known." }
+      }
+    },
+    "advice": {
+      "type": "object",
+      "required": ["currency", "catalogue_checked", "pays_for_bytes", "pays_for_exact", "waste_bytes", "size_class_bytes", "withheld", "current_plan", "plans", "unavailable"],
+      "properties": {
+        "currency": { "type": "string", "description": "The currency of every price, USD." },
+        "catalogue_checked": { "type": "string", "description": "When the price catalogue's prices were read, or empty without a catalogue." },
+        "pays_for_bytes": { "$ref": "#/$defs/bytes" },
+        "pays_for_exact": { "type": "boolean", "description": "Whether pays_for_bytes is the known plan's advertised size rather than the memory the kernel sees, which is a little less." },
+        "waste_bytes": { "$ref": "#/$defs/bytes" },
+        "size_class_bytes": { "$ref": "#/$defs/bytes", "description": "The smallest common size whose usable memory holds the snug size, or 0 when none does." },
+        "withheld": { "type": "boolean", "description": "Whether smaller plans were held back because the box shows signs it needs more memory." },
+        "current_plan": { "anyOf": [{ "$ref": "#/$defs/plan" }, { "type": "null" }] },
+        "plans": { "type": "array", "items": { "$ref": "#/$defs/plan" } },
+        "unavailable": { "type": "array", "items": { "$ref": "#/$defs/plan" }, "description": "Plans that fit but can't be ordered now; never ranked." }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "required": ["kind", "text"],
+      "properties": {
+        "kind": { "type": "string", "description": "Such as oom_kills, pressure, swapping, no_swap, no_oom_protection, unlimited_containers, thp_database, overcommit, crash_loop or orphan_browsers." },
+        "text": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0 },
+        "of": { "type": "integer", "minimum": 0 },
+        "undated": { "type": "integer", "minimum": 0, "description": "Kills whose time is unknown." },
+        "names": { "type": "array", "items": { "type": "string" } },
+        "share": { "type": "number", "minimum": 0 },
+        "setting": { "type": "string" },
+        "database": { "type": "string" },
+        "restarts": { "type": "array", "items": { "type": "integer", "minimum": 0 }, "description": "Each crash-looping container's restart count, in the order of names." },
+        "bytes": { "$ref": "#/$defs/bytes", "description": "The memory orphaned headless browsers hold." }
+      }
+    },
+    "limit": {
+      "type": "object",
+      "required": ["workload", "name", "max_bytes", "soft_bytes", "low_confidence"],
+      "properties": {
+        "workload": { "type": "string" },
+        "name": { "type": "string" },
+        "max_bytes": { "$ref": "#/$defs/bytes" },
+        "soft_bytes": { "$ref": "#/$defs/bytes" },
+        "low_confidence": { "type": "boolean", "description": "Whether the limit comes from under 7 days of data." }
+      }
+    },
+    "heap": {
+      "type": "object",
+      "required": ["workload", "name", "runtime", "setting", "limit_bytes"],
+      "properties": {
+        "workload": { "type": "string" },
+        "name": { "type": "string" },
+        "runtime": { "type": "string", "description": "The workload's runtime, such as java, node, go, python or php-fpm." },
+        "env": { "type": "string", "description": "The environment variable the cap goes in." },
+        "setting": { "type": "string", "description": "The variable's value, or for PHP-FPM the pool line." },
+        "service": { "type": "string", "description": "The unit whose drop-in sets the cap; absent where the cap is advice for a person." },
+        "limit_bytes": { "$ref": "#/$defs/bytes" },
+        "workers": { "type": "integer", "minimum": 0 },
+        "worker_bytes": { "$ref": "#/$defs/bytes" }
+      }
+    },
+    "shift": {
+      "type": "object",
+      "required": ["timer", "service", "collides_with", "minutes_earlier", "days", "peak_bytes"],
+      "properties": {
+        "timer": { "type": "string" },
+        "service": { "type": "string" },
+        "collides_with": { "type": "string" },
+        "minutes_earlier": { "type": "integer", "minimum": 0 },
+        "days": { "type": "integer", "minimum": 0 },
+        "peak_bytes": { "$ref": "#/$defs/bytes" }
+      }
+    },
+    "cron": {
+      "type": "object",
+      "required": ["file", "line", "program", "schedule", "minutes_later", "collides_with", "collided_at", "days", "rise_bytes"],
+      "properties": {
+        "file": { "type": "string" },
+        "line": { "type": "integer", "minimum": 0 },
+        "program": { "type": "string" },
+        "schedule": { "type": "string" },
+        "suggested_schedule": { "type": "string", "description": "Absent when Snugbox can't rewrite a schedule like this one." },
+        "minutes_later": { "type": "integer", "minimum": 0 },
+        "collides_with": { "type": "string" },
+        "collided_at": { "type": "string", "format": "date-time" },
+        "days": { "type": "integer", "minimum": 0 },
+        "rise_bytes": { "$ref": "#/$defs/bytes" }
+      }
+    },
+    "fix": {
+      "type": "object",
+      "required": ["number", "kind", "title", "risk", "needs_restart"],
+      "properties": {
+        "number": { "type": "integer", "minimum": 1, "description": "What snugbox fit takes to apply it." },
+        "kind": { "type": "string", "description": "Such as swap, oom-protection, container-limits, service-limits, heap-caps or schedule." },
+        "title": { "type": "string" },
+        "risk": { "type": "string", "description": "low, medium, or medium to high." },
+        "needs_restart": { "type": "boolean" },
+        "swap_bytes": { "$ref": "#/$defs/bytes" },
+        "compressor": { "type": "string", "description": "zswap's compressor, when the fix turns zswap on." },
+        "limits": { "type": "array", "items": { "$ref": "#/$defs/limit" } },
+        "heaps": { "type": "array", "items": { "$ref": "#/$defs/heap" } },
+        "shifts": { "type": "array", "items": { "$ref": "#/$defs/shift" } },
+        "cron": { "type": "array", "items": { "$ref": "#/$defs/cron" } }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "required": ["working_set_p95_bytes", "working_set_p99_bytes", "working_set_p999_bytes", "working_set_max_bytes", "hard_max_bytes"],
+      "properties": {
+        "working_set_p95_bytes": { "$ref": "#/$defs/bytes" },
+        "working_set_p99_bytes": { "$ref": "#/$defs/bytes" },
+        "working_set_p999_bytes": { "$ref": "#/$defs/bytes" },
+        "working_set_max_bytes": { "$ref": "#/$defs/bytes" },
+        "hard_max_bytes": { "$ref": "#/$defs/bytes", "description": "The most memory the kernel couldn't reclaim." }
+      }
+    },
+    "workload": {
+      "type": "object",
+      "required": ["id", "kind", "name", "programs", "limit_bytes", "memory_peak_bytes", "oom_kills_in_window", "pressured", "working_set_p95_bytes", "working_set_p99_bytes", "working_set_p999_bytes", "working_set_max_bytes", "hard_max_bytes"],
+      "properties": {
+        "id": { "type": "string", "description": "The workload's cgroup path." },
+        "kind": { "type": "string", "description": "container, service or group." },
+        "name": { "type": "string" },
+        "programs": { "type": "array", "items": { "type": "string" } },
+        "compose": {
+          "type": "object",
+          "required": ["project", "service"],
+          "properties": {
+            "project": { "type": "string" },
+            "service": { "type": "string" }
+          }
+        },
+        "database": { "type": "string", "description": "The database the workload runs, such as postgresql or redis." },
+        "database_settings": { "type": "array", "items": { "type": "string" }, "description": "The memory settings on the database's command line." },
+        "runtime": { "type": "string", "description": "The runtime Snugbox found, such as java, node, go, python or php-fpm." },
+        "limit_bytes": { "anyOf": [{ "$ref": "#/$defs/bytes" }, { "type": "null" }], "description": "The workload's hard memory limit, or null when it has none." },
+        "memory_peak_bytes": { "anyOf": [{ "$ref": "#/$defs/bytes" }, { "type": "null" }], "description": "The kernel's memory.peak, or null when the kernel has none." },
+        "oom_kills_in_window": { "type": "integer", "minimum": 0 },
+        "pressured": { "type": "boolean" },
+        "working_set_p95_bytes": { "$ref": "#/$defs/bytes" },
+        "working_set_p99_bytes": { "$ref": "#/$defs/bytes" },
+        "working_set_p999_bytes": { "$ref": "#/$defs/bytes" },
+        "working_set_max_bytes": { "$ref": "#/$defs/bytes" },
+        "hard_max_bytes": { "$ref": "#/$defs/bytes" }
+      }
+    },
+    "idle": {
+      "type": "object",
+      "description": "A container that used under 0.1% of one CPU core over a week or more.",
+      "required": ["workload", "name", "cpu_seconds", "observed_seconds", "working_set_p99_bytes"],
+      "properties": {
+        "workload": { "type": "string" },
+        "name": { "type": "string" },
+        "cpu_seconds": { "type": "number", "minimum": 0 },
+        "observed_seconds": { "type": "number", "minimum": 0 },
+        "working_set_p99_bytes": { "$ref": "#/$defs/bytes" }
+      }
+    },
+    "data_quality": {
+      "type": "object",
+      "required": ["gap_seconds", "unread", "notes"],
+      "properties": {
+        "gap_seconds": { "type": "number", "minimum": 0 },
+        "unread": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["what", "why"],
+            "properties": {
+              "what": { "type": "string" },
+              "why": { "type": "string" }
+            }
+          }
+        },
+        "notes": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

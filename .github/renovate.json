@@ -1,0 +1,47 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Renovate proposes updates; nothing merges without passing CI (blueprint section 6.3). Pins that carry a SHA-256 beside them, cosign in packaging/install.sh and in the workflows and gitleaks in ci.yml, are updated by hand as docs/maintaining.md describes.",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "semanticCommits": "enabled",
+  "semanticCommitType": "build",
+  "semanticCommitScope": "deps",
+  "minimumReleaseAge": "3 days",
+  "postUpdateOptions": ["gomodTidy"],
+  "labels": ["dependencies"],
+  "schedule": ["before 6am on monday"],
+  "packageRules": [
+    {
+      "description": "One pull request a week for the workflows' actions",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "description": "Minor and patch Go module updates together",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "Go modules"
+    },
+    {
+      "description": "The Go toolchain and go directive move together, never automatically to a new major",
+      "matchManagers": ["gomod"],
+      "matchDepNames": ["go", "toolchain"],
+      "groupName": "Go toolchain"
+    },
+    {
+      "description": "protoc-gen-go generates code that must match the protobuf runtime in go.mod",
+      "matchPackageNames": ["google.golang.org/protobuf"],
+      "groupName": "protobuf"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Tool versions in the workflows and the Makefile, each marked by a renovate comment on the line above",
+      "managerFilePatterns": ["/^\\.github/workflows/[^/]+\\.ya?ml$/", "/^Makefile$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s+[A-Za-z0-9_-]+\\s*(?::|\\?=|:=|=)\\s*\"?(?<currentValue>[^\"\\s]+)\"?"
+      ],
+      "extractVersionTemplate": "{{#if extractVersion}}{{{extractVersion}}}{{else}}^(?<version>.+)${{/if}}"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+[Unit]
+Description=Snugbox helper, which applies and undoes fixes
+Documentation=https://snugbox.dev/docs/fixes/
+Requires=snugbox-helper.socket
+After=snugbox-helper.socket
+
+[Service]
+Type=simple
+# systemctl set-property --runtime keeps its settings in this folder, which
+# systemd makes only when it first needs it; the helper removes the ones
+# its own calls leave there. It must exist before the sandbox below is set
+# up, or ReadWritePaths= skips it. A failure doesn't stop the helper, which
+# is also what undoes fixes.
+ExecStartPre=-+/usr/bin/mkdir -p /run/systemd/system.control
+ExecStart=/usr/libexec/snugbox/snugbox-helper
+# The socket starts it for each request; it exits after 60 seconds idle.
+Restart=no
+
+StateDirectory=snugbox-helper
+StateDirectoryMode=0700
+UMask=0022
+
+# Root, but with only two capabilities: reading the kernel log for recent
+# out-of-memory kills, and reading a Compose project folder its owner keeps
+# private. systemd itself carries out every enable, start and reload.
+CapabilityBoundingSet=CAP_SYSLOG CAP_DAC_READ_SEARCH
+NoNewPrivileges=yes
+
+ProtectSystem=strict
+# Generated from the fix catalogue (helper.WritePaths) and checked by
+# TestUnitWritePaths: a new fix can't widen this without a reviewed change.
+ReadWritePaths=/etc/systemd/system /etc/tmpfiles.d -/sys/module/zswap/parameters -/run/systemd/system.control
+ProtectHome=read-only
+PrivateTmp=yes
+PrivateDevices=yes
+BindReadOnlyPaths=/dev/kmsg
+DeviceAllow=/dev/kmsg r
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+# Every socket the helper uses is a file in /run, which a private network
+# namespace still reaches.
+PrivateNetwork=yes
+IPAddressDeny=any
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+# Blueprint section 9.4: under 15 MiB while running; this is the backstop.
+MemoryMax=64M
+ManagedOOMPreference=omit

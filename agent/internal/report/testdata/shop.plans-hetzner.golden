@@ -1,0 +1,18 @@
+This box pays for 8 GiB and needs 2.84 GiB. A 4 GiB plan fits.
+snug size: 2.34 need + 0.25 headroom + 0.25 cache. Confidence low: Early estimate from 60 seconds of data. Keep watching for a week before changing plans.
+
+PLANS THAT FIT plan              vCPU    memory     usable        disk  a month   saving  how
+  Hetzner      CPX22                2  3.73 GiB   3.46 GiB   74.51 GiB   $23.59   $24.41  new server
+  Hetzner      CPX32                4  7.45 GiB   6.93 GiB  149.01 GiB   $42.59    $5.41  new server
+  Hetzner      CCX13, dedicated     2  7.45 GiB   6.93 GiB   74.51 GiB   $51.09   -$3.09  new server
+  Hetzner      CPX42                8  14.9 GiB  13.86 GiB  298.02 GiB   $82.59  -$34.59  new server
+
+NOT AVAILABLE TO ORDER plan        vCPU    memory     usable        disk  a month
+  Hetzner              CX23           2  3.73 GiB   3.46 GiB   37.25 GiB    $7.09
+  Hetzner              CAX11, Arm     2  3.73 GiB   3.46 GiB   37.25 GiB    $7.59
+  Hetzner              CX33           4  7.45 GiB   6.93 GiB   74.51 GiB   $10.59
+  Hetzner              CAX21, Arm     4  7.45 GiB   6.93 GiB   74.51 GiB   $13.09
+  Hetzner              CX43           8  14.9 GiB  13.86 GiB  149.01 GiB   $19.09
+
+Usable memory is 93% of the advertised size until Snugbox has measured the plan.
+List prices checked 31 Oct 2026, before VAT. Hetzner adds $0.60 a month for IPv4.

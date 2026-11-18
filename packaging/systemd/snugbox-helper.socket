@@ -1,0 +1,16 @@
+[Unit]
+Description=Socket of the Snugbox helper, which applies and undoes fixes
+Documentation=https://snugbox.dev/docs/fixes/
+
+[Socket]
+ListenStream=/run/snugbox/helper.sock
+SocketUser=snugbox
+SocketGroup=snugbox
+SocketMode=0660
+DirectoryMode=0750
+# The kernel attaches the sender to every message, which the helper checks.
+PassCredentials=yes
+RemoveOnStop=yes
+
+[Install]
+WantedBy=sockets.target

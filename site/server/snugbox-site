@@ -1,0 +1,52 @@
+#!/bin/bash
+# snugbox-site deploy <site.tgz> | rollback | list
+#
+# deploy unpacks a build of snugbox.dev into /srv/snugbox.dev/releases/<UTC
+# time> and points /srv/snugbox.dev/current at it with one rename, so a visitor
+# never sees half a deploy. The newest 5 releases are kept. rollback points
+# current at the release before the live one. Caddy needs no reload for either.
+set -euo pipefail
+base=/srv/snugbox.dev
+keep=5
+
+point() {
+	ln -sfn "$1" "$base/current.new"
+	mv -T "$base/current.new" "$base/current"
+}
+
+case "${1:-}" in
+deploy)
+	tgz=${2:?usage: snugbox-site deploy <site.tgz>}
+	rel=$base/releases/$(date -u +%Y%m%dT%H%M%S.%3NZ)
+	mkdir "$rel"
+	tar -xzf "$tgz" -C "$rel" --no-same-owner --no-same-permissions
+	if [ ! -f "$rel/index.html" ] || [ ! -f "$rel/404.html" ]; then
+		rm -rf "$rel"
+		echo "snugbox-site: $tgz has no index.html or 404.html; nothing changed" >&2
+		exit 1
+	fi
+	find "$rel" -type d -exec chmod 0755 {} +
+	find "$rel" -type f -exec chmod 0644 {} +
+	point "$rel"
+	printf '%s\n' "$base"/releases/*/ | head -n -"$keep" | xargs -r -d '\n' rm -rf
+	echo "live: $rel"
+	;;
+rollback)
+	cur=$(readlink -f "$base/current")
+	prev=$(printf '%s\n' "$base"/releases/* | awk -v c="$cur" '$0 == c { print p; exit } { p = $0 }')
+	if [ -z "$prev" ]; then
+		echo "snugbox-site: no release older than $cur" >&2
+		exit 1
+	fi
+	point "$prev"
+	echo "live: $prev (was $cur)"
+	;;
+list)
+	printf '%s\n' "$base"/releases/*
+	echo "live: $(readlink -f "$base/current")"
+	;;
+*)
+	echo "usage: snugbox-site deploy <site.tgz> | rollback | list" >&2
+	exit 2
+	;;
+esac

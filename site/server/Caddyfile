@@ -1,0 +1,79 @@
+# snugbox.dev. Installed by setup.sh from snugbox-site/server on the owner's PC;
+# edit it there and run setup.sh again. Layout and commands: /srv/README.md.
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		Content-Security-Policy "default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		X-Frame-Options "DENY"
+		-Server
+	}
+}
+
+(access_log) {
+	# Request headers are dropped, so the log holds no visitor IP address
+	# (behind Cloudflare it arrives in a header) and no user agent.
+	log {
+		output file /var/log/caddy/snugbox.dev.log {
+			roll_size 10MiB
+			roll_keep 5
+			roll_keep_for 720h
+		}
+		format filter {
+			wrap json
+			fields {
+				request>headers delete
+			}
+		}
+	}
+}
+
+snugbox.dev {
+	import security_headers
+	import access_log
+	root * /srv/snugbox.dev/current
+	encode zstd gzip
+
+	# The Go module path is snugbox.dev/snugbox, so `go install` asks here
+	# where the code lives.
+	@goget query go-get=1
+	handle @goget {
+		header Content-Type "text/html; charset=utf-8"
+		header Cache-Control "public, max-age=300, no-transform"
+		respond `<!doctype html><meta name="go-import" content="snugbox.dev/snugbox git https://github.com/snug-box/snugbox">` 200
+	}
+
+	# File names under /assets and /fonts carry a hash of their content.
+	# no-transform keeps Cloudflare from editing pages, such as adding its
+	# analytics script, which the Content-Security-Policy would block anyway.
+	@hashed path /assets/* /fonts/*.woff2
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+	@icons path /icons/* /favicon.ico
+	header @icons Cache-Control "public, max-age=86400"
+	@pages path / /docs/* /*.html /*.txt /*.xml /site.webmanifest
+	header @pages Cache-Control "public, max-age=300, no-transform"
+	@schema path /schema/audit/v1
+	header @schema Content-Type "application/schema+json"
+
+	# build.py writes a .gz copy of every text file; pages carry no-transform,
+	# which stops on-the-fly compression, so the copies are what visitors get.
+	file_server {
+		precompressed gzip
+	}
+	handle_errors 404 {
+		header Cache-Control "public, max-age=300, no-transform"
+		rewrite * /404.html
+		file_server {
+			precompressed gzip
+		}
+	}
+}
+
+www.snugbox.dev {
+	import security_headers
+	redir https://snugbox.dev{uri} permanent
+}

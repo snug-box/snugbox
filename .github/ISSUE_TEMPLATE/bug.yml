@@ -1,0 +1,39 @@
+name: Something is wrong
+description: A wrong number, a crash, a fix that misbehaved, or a message that misled you.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. A security problem goes through the private report instead; see SECURITY.md.
+        Please remove host names, container names and anything else you'd rather not post from the output you paste.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: The command you ran, what it printed, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of sudo snugbox doctor
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Output of snugbox version
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: If a fix was involved, the output of snugbox fit --status
+      render: text
+  - type: input
+    id: system
+    attributes:
+      label: Distribution, provider and plan
+      placeholder: Ubuntu 24.04 on a Hetzner CPX22

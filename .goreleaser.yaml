@@ -1,0 +1,206 @@
+# GoReleaser v2.19 configuration for the agent. CI runs it from
+# .github/workflows/release.yml on a signed tag; locally,
+# goreleaser release --snapshot --clean --parallelism 1 builds everything
+# except signatures.
+#
+# Always run it with --parallelism 1. GoReleaser adds the binaries to an
+# archive in the order their builds finish, so parallel builds can order
+# the same archive differently from one run to the next, and the release
+# would no longer be reproducible. Two clones of one commit built with one
+# worker gave the same checksums on 31 Oct 2026; built in parallel, their
+# tarballs differed only in that order.
+version: 2
+
+project_name: snugbox
+
+before:
+  hooks:
+    - go mod verify
+
+builds:
+  - &agent
+    id: snugbox
+    main: ./agent/cmd/snugbox
+    binary: snugbox
+    env:
+      - CGO_ENABLED=0
+    goos: [linux]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    # The commit's own time, so a rebuild of the same commit gives the same
+    # bytes and the same checksums (blueprint section 6.3).
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    ldflags:
+      - -s -w
+      - -X snugbox.dev/snugbox/agent/internal/version.Version={{ .Version }}
+      - -X snugbox.dev/snugbox/agent/internal/version.Commit={{ .FullCommit }}
+      - -X snugbox.dev/snugbox/agent/internal/version.Date={{ .CommitDate }}
+  - <<: *agent
+    id: snugboxd
+    main: ./agent/cmd/snugboxd
+    binary: snugboxd
+  - <<: *agent
+    id: snugbox-helper
+    main: ./agent/cmd/snugbox-helper
+    binary: snugbox-helper
+
+archives:
+  - id: tarball
+    ids: [snugbox, snugboxd, snugbox-helper]
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    # Owners and times fixed to the commit's, so the archive's bytes depend
+    # on the commit alone.
+    builds_info:
+      owner: root
+      group: root
+      mtime: "{{ .CommitDate }}"
+    files:
+      - src: LICENSE
+        info: &doc {owner: root, group: root, mode: 0o644, mtime: "{{ .CommitDate }}"}
+      - src: NOTICE
+        info: *doc
+      - src: THIRD_PARTY_NOTICES.md
+        info: *doc
+
+nfpms:
+  - id: packages
+    package_name: snugbox
+    ids: [snugbox, snugboxd, snugbox-helper]
+    file_name_template: "{{ .ConventionalFileName }}"
+    vendor: Snugbox
+    homepage: https://snugbox.dev
+    maintainer: Snugbox Maintainers <234310069+devpilotX@users.noreply.github.com>
+    description: |-
+      Measures how much memory a Linux server needs.
+      Snugbox reads what each container and service really uses, trims the
+      waste with changes it can undo, and names the cheapest plan that fits.
+    license: Apache-2.0
+    formats: [deb, rpm]
+    # Only snugbox is a command people run; the watcher and the helper sit
+    # beside it, where snugbox watch install finds them.
+    bindir: /usr/libexec/snugbox
+    section: admin
+    priority: optional
+    mtime: "{{ .CommitDate }}"
+    contents:
+      # rpm removes only the folders a package owns, so the two folders it
+      # fills are listed; dpkg removes emptied folders by itself.
+      - dst: /usr/libexec/snugbox
+        type: dir
+        file_info: {mode: 0o755, mtime: "{{ .CommitDate }}"}
+      - dst: /usr/share/doc/snugbox
+        type: dir
+        file_info: {mode: 0o755, mtime: "{{ .CommitDate }}"}
+      - src: /usr/libexec/snugbox/snugbox
+        dst: /usr/bin/snugbox
+        type: symlink
+        file_info: {mtime: "{{ .CommitDate }}"}
+      - src: packaging/systemd/snugboxd.service
+        dst: /usr/lib/systemd/system/snugboxd.service
+        file_info: &file {mode: 0o644, mtime: "{{ .CommitDate }}"}
+      - src: packaging/systemd/snugbox-helper.service
+        dst: /usr/lib/systemd/system/snugbox-helper.service
+        file_info: *file
+      - src: packaging/systemd/snugbox-helper.socket
+        dst: /usr/lib/systemd/system/snugbox-helper.socket
+        file_info: *file
+      - src: packaging/sysusers.d/snugbox.conf
+        dst: /usr/lib/sysusers.d/snugbox.conf
+        file_info: *file
+      # The watcher's settings, every one commented out. A webhook address
+      # can hold a secret, so only root reads the file; systemd reads it as
+      # root for the watcher. An edited copy survives upgrades.
+      - dst: /etc/snugbox
+        type: dir
+        file_info: {mode: 0o755, mtime: "{{ .CommitDate }}"}
+      - src: agent/internal/units/snugboxd.env
+        dst: /etc/snugbox/snugboxd.env
+        type: config|noreplace
+        file_info: {mode: 0o600, mtime: "{{ .CommitDate }}"}
+      - src: LICENSE
+        dst: /usr/share/doc/snugbox/LICENSE
+        file_info: *file
+      - src: NOTICE
+        dst: /usr/share/doc/snugbox/NOTICE
+        file_info: *file
+      - src: THIRD_PARTY_NOTICES.md
+        dst: /usr/share/doc/snugbox/THIRD_PARTY_NOTICES.md
+        file_info: *file
+    scripts:
+      postinstall: packaging/scripts/postinstall.sh
+      preremove: packaging/scripts/preremove.sh
+      postremove: packaging/scripts/postremove.sh
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+  # The install script's SHA-256 goes in the signed checksums too, so it can
+  # be checked before it runs (blueprint section 7.2).
+  extra_files:
+    - glob: packaging/install.sh
+
+# Syft writes an SPDX and a CycloneDX bill of materials for every archive.
+sboms:
+  - id: spdx
+    artifacts: archive
+    documents: ["{{ .ArtifactName }}.spdx.json"]
+    args: ["$artifact", "--output", "spdx-json=$document"]
+  - id: cyclonedx
+    artifacts: archive
+    documents: ["{{ .ArtifactName }}.cdx.json"]
+    args: ["$artifact", "--output", "cyclonedx-json=$document"]
+
+# cosign signs every file of the release without a long-lived key, using the
+# release workflow's OIDC identity (blueprint section 6.3); each bundle holds
+# the certificate and the Rekor entry. install.sh checks the bundle of
+# checksums.txt before it trusts any checksum.
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args: ["sign-blob", "--bundle=${signature}", "${artifact}", "--yes"]
+    artifacts: all
+
+changelog:
+  sort: asc
+  use: git
+  groups:
+    - title: Features
+      regexp: '^feat(\(.+\))?!?:'
+      order: 0
+    - title: Fixes
+      regexp: '^fix(\(.+\))?!?:'
+      order: 1
+    - title: Security
+      regexp: '^sec(\(.+\))?!?:'
+      order: 2
+    - title: Other changes
+      order: 999
+  filters:
+    exclude:
+      - '^(docs|test|ci|chore)(\(.+\))?:'
+
+# A person edits the notes and publishes the draft (blueprint section 9.6).
+# The installer pins this organisation's release workflow identity.
+release:
+  github:
+    owner: snug-box
+    name: snugbox
+  draft: true
+  prerelease: auto
+  extra_files:
+    - glob: packaging/install.sh
+  footer: |
+    ## Checking this release
+
+    checksums.txt lists the SHA-256 of every file here, install.sh included, and was signed by this release's workflow:
+
+    ```sh
+    cosign verify-blob --bundle checksums.txt.sigstore.json \
+      --certificate-identity https://github.com/snug-box/snugbox/.github/workflows/release.yml@refs/tags/{{ .Tag }} \
+      --certificate-oidc-issuer https://token.actions.githubusercontent.com checksums.txt
+    sha256sum --ignore-missing -c checksums.txt
+    ```
+
+    The build provenance can be checked with `gh attestation verify <file> --repo snug-box/snugbox`. To check every file at once, signatures, bills of materials and provenance included, download them into one folder and run `sh test/release/verify.sh --provenance --attestations <folder> {{ .Tag }}` from a checkout of this tag.

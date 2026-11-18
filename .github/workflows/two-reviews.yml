@@ -1,0 +1,65 @@
+# Code that runs as root, or that decides what runs as root, needs two
+# approving reviews from people other than the author (blueprint section
+# 6.3). GitHub counts approvals for a whole pull request only, so this check
+# counts them when such a path changes; branch protection makes it required.
+#
+# The repository variable ROOT_REVIEWS sets how many approvals it asks for,
+# 2 when it is not set. While the project has one maintainer no one else can
+# approve, so ROOT_REVIEWS is 0 and the check only says what it would need;
+# set it to 2 when a second maintainer joins.
+name: two-reviews
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  count:
+    name: Two reviews for code that runs as root
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read # list the changed files and the reviews
+    steps:
+      - name: Count approvals on the latest commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          NEEDED: ${{ vars.ROOT_REVIEWS || '2' }}
+        run: |
+          root='^(agent/internal/(fix|helper|helperapi|journal|safefs|units)/|agent/cmd/snugbox-helper/|proto/|packaging/|\.github/|\.goreleaser\.yaml$)'
+          changed=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files?per_page=100" --jq '.[].filename' | grep -E "$root" || true)
+          if [ -z "$changed" ]; then
+            echo "No code that runs as root changed; the usual review rule applies."
+            exit 0
+          fi
+          printf 'Code that runs as root changed:\n%s\n' "$changed"
+          # Each reviewer's latest review counts, and only an approval of
+          # the commit under review. --paginate prints one array per page,
+          # which jq joins.
+          approvals=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews?per_page=100" |
+            jq -s --arg author "$AUTHOR" --arg head "$HEAD" '
+              add
+              | map(select(.user.login != $author and .state != "COMMENTED"))
+              | group_by(.user.login)
+              | map(last | select(.state == "APPROVED" and .commit_id == $head))
+              | length')
+          echo "Approvals of $HEAD from people other than $AUTHOR: $approvals of $NEEDED"
+          if [ "$approvals" -lt "$NEEDED" ]; then
+            echo "::error::This change touches code that runs as root and needs $NEEDED approving reviews of its latest commit; it has $approvals."
+            exit 1
+          fi
+          if [ "$NEEDED" -lt 2 ]; then
+            echo "::warning::ROOT_REVIEWS is $NEEDED, so this change merges with $approvals outside approvals; blueprint section 6.3 asks for 2 once there are maintainers to give them."
+          fi

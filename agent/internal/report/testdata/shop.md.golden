@@ -1,0 +1,76 @@
+# Snugbox audit of web-1
+
+This box pays for 8 GiB and needs 2.84 GiB. A 4 GiB plan fits.
+
+Snugbox 1.0.0, Sat 31 Oct 2026 09:01 +00:00. Read-only: it changed nothing and sent no data.
+
+## Summary
+
+| | | |
+| --- | --- | --- |
+| Pays for | 8 GiB | DigitalOcean Basic 8 GiB, $48.00 a month |
+| Needs | 2.84 GiB | snug size: 2.34 need + 0.25 headroom + 0.25 cache |
+| Waste | 5.16 GiB | |
+| Fits | 4 GiB | Basic 4 GiB, new server, saves $24.00 a month |
+| Confidence | low | Early estimate from 60 seconds of data. Keep watching for a week before changing plans. |
+
+## Risks
+
+- No swap, and no early out-of-memory protection.
+- 2 of 2 containers have no memory limit: shop-app-1, shop-db-1.
+- No out-of-memory kills since the box booted 10 days ago, and pressure stayed under 1% since boot.
+
+## Workloads
+
+Working set is the memory a workload would miss if it were taken away: memory that can't be dropped plus the file cache it keeps rereading.
+
+| Workload | Kind | Program | 95th pct | 99th pct | Peak seen | memory.peak | Limit |
+| --- | --- | --- | ---: | ---: | ---: | ---: | --- |
+| shop-app-1 | container | node | 1,280 MiB | 1,280 MiB | 1,280 MiB | 1,600 MiB | none |
+| shop-db-1 | container | postgres | 628 MiB | 628 MiB | 628 MiB | 1,028 MiB | none |
+| backup.service | service | restic | 300 MiB | 300 MiB | 300 MiB | 300 MiB | none |
+| ssh.service | service | sshd | 6 MiB | 6 MiB | 6 MiB | 6 MiB | none |
+| cron.service | service | cron | 0.3 MiB | 0.3 MiB | 0.3 MiB | 0.3 MiB | none |
+| Kernel and other | kernel | | 178 MiB | 178 MiB | 178 MiB | | |
+
+## Fixes
+
+| # | Fix | Risk |
+| ---: | --- | --- |
+| 1 | Limits for shop-app-1 | medium |
+| 2 | Limits for backup.service | medium |
+| 3 | Early out-of-memory protection, systemd-oomd | medium |
+| 4 | Heap caps for shop-app-1, after a restart | medium to high |
+
+Preview a fix with `snugbox fit --dry-run <number>` and apply it with `sudo snugbox fit <number>`. Every fix has an undo: `sudo snugbox undo --last`.
+
+- shop-app-1: limit 1,664 MiB, reservation 1,280 MiB, an early estimate.
+- backup.service: MemoryMax 448 MiB, MemoryHigh 384 MiB, an early estimate.
+- shop-app-1, Node.js: set `NODE_OPTIONS=--max-old-space-size=1248` in its environment when you next make the container.
+
+Note: shop-db-1 is PostgreSQL and holds 628 MiB, 128 MiB of it shared memory, which is mostly shared\_buffers. On Vultr vc2-2c-4gb, shared\_buffers plus max\_connections times work\_mem should stay under 1,533 MiB, since one query can use work\_mem several times over. PostgreSQL's documentation suggests a quarter of RAM for shared\_buffers on a server of its own.
+
+## Plans that fit
+
+| Provider | Plan | A month | Saving | How |
+| --- | --- | ---: | ---: | --- |
+| Vultr | vc2-2c-4gb | $20.00 | $28.00 | new server |
+| Hetzner | CPX22 | $23.59 | $24.41 | new server |
+| AWS Lightsail | 4 GB | $24.00 | $24.00 | new instance |
+| DigitalOcean | Basic 4 GiB | $24.00 | $24.00 | new server |
+| Akamai Linode | Linode 4GB | $24.00 | $24.00 | new server |
+
+Hetzner CX23 ($7.09), CAX11 ($7.59, Arm), CX33 ($10.59), CAX21 ($13.09, Arm) and CX43 ($19.09) fit too, but are listed as not available to order.
+
+List prices checked 31 Oct 2026, before VAT. Hetzner adds $0.60 a month for IPv4.
+
+How DigitalOcean moves a server to a smaller plan: https://docs.digitalocean.com/products/droplets/how-to/resize/
+
+## Data quality
+
+- Sampled for 60 seconds, every 2 seconds, with no gaps (31 samples).
+- Kernel 6.8, cgroup v2, pressure files and memory.peak.
+- Could not read the kernel log at /dev/kmsg: no log, so kill times are unknown.
+- Provider and region came from the cloud metadata service at 169.254.169.254. Skip it with --offline.
+
+The memory model behind these numbers is published at https://snugbox.dev/docs/memory-model.

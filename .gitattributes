@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.golden -text
+agent/internal/kernel/testdata/** -text
+*.png binary
+*.ico binary

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>{{TITLE}} | Snugbox</title>
+<meta name="description" content="{{DESCRIPTION}}">
+<link rel="canonical" href="https://snugbox.dev{{CANONICAL}}">
+<link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="{{CSS}}">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+{{SPRITE}}
+<div class="site">
+  <header class="site-head">
+    <div class="wrap">
+      <a class="brand" href="/">
+        <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><use href="#logo-mark"/></svg>
+        <svg class="word" viewBox="0 0 4018 1045" aria-hidden="true"><use href="#logo-word"/></svg>
+        <span class="visually-hidden">Snugbox home</span>
+      </a>
+      <nav aria-label="Main"><ul><li><a href="/docs/">Docs</a></li><li><a href="https://github.com/snug-box/snugbox">GitHub</a></li></ul></nav>
+    </div>
+  </header>
+  <main class="doc" id="main">{{CONTENT}}</main>
+  <footer class="site-foot"><div class="wrap"><p class="fine"><a href="/docs/data-policy/">Data policy</a> <a href="/license.txt">Licence</a></p></div></footer>
+</div>
+</body>
+</html>

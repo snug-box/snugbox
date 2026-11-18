@@ -1,0 +1,6 @@
+# Build output
+/public/
+__pycache__/
+
+# The server and SSH key deploy.ps1 uses; kept on the owner's machine only
+/deploy.config.psd1

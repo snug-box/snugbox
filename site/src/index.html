@@ -1,0 +1,129 @@
+<!doctype html>
+<!-- Third-party parts of this page and their licences: https://snugbox.dev/licenses.txt -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snugbox | Linux Memory Audit and VPS Right-Sizing</title>
+<meta name="description" content="Audit Linux server memory by service, process and Docker container. Find what uses RAM, preview reversible fixes and compare VPS plans with Snugbox.">
+<link rel="canonical" href="https://snugbox.dev/">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#14181F">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Snugbox">
+<meta property="og:url" content="https://snugbox.dev/">
+<meta property="og:title" content="Snugbox | Linux Memory Audit and VPS Right-Sizing">
+<meta property="og:description" content="See where your Linux server's memory goes and find a VPS plan that fits.">
+<meta property="og:image" content="https://snugbox.dev/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Snugbox. Pay for the RAM you use.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preload" href="{{FONT}}" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="{{CSS}}">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+{{SPRITE}}
+<div class="site">
+  <header class="site-head">
+    <div class="wrap">
+      <a class="brand" href="/">
+        <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><use href="#logo-mark"/></svg>
+        <svg class="word" viewBox="0 0 4018 1045" aria-hidden="true"><use href="#logo-word"/></svg>
+        <span class="visually-hidden">Snugbox home</span>
+      </a>
+      <nav aria-label="Main">
+        <ul>
+          <li><a href="/docs/">Docs</a></li>
+          <li><a href="#guides">Guides</a></li>
+          <li><a href="https://github.com/snug-box/snugbox">GitHub</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="hero">
+      <div class="wrap">
+        <div>
+          <h1>Find the RAM your Linux server needs.</h1>
+          <p class="lede">See what each service and Docker container uses. Preview reversible fixes and use real memory history to choose a VPS plan.</p>
+          <div class="launch-actions">
+            <a class="btn btn-accent" href="/docs/install/">Install Snugbox</a>
+            <a class="btn btn-outline" href="https://github.com/snug-box/snugbox">View source</a>
+          </div>
+          <p class="hero-note">Open source under Apache 2.0. Linux on x86-64 and Arm64.</p>
+        </div>
+        <figure class="term">
+          <div class="term-bar" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title"><svg class="mark" viewBox="0 0 64 64"><use href="#logo-mark"/></svg>snugbox</span></div>
+<pre class="term-body"><span class="t-dim">$</span> sudo snugbox audit
+<span class="t-dim">Read-only. Sampled for 60 seconds.</span>
+
+<span class="t-head">SUMMARY</span>
+  Pays for    8 GiB
+  Needs       <span class="t-amber">2.84 GiB</span>
+  Waste       <span class="t-red">5.16 GiB</span>
+  Fits        <span class="t-green">4 GiB plan</span>
+  Saves       <span class="t-green">$24.00 a month</span>
+
+<span class="t-head">FIXES</span>
+  4 ready, each with an undo</pre>
+          <div class="term-meter" aria-hidden="true"><span class="need"></span><span class="waste"></span></div>
+          <figcaption class="term-cap">Example output from a server with 8 GiB, shortened.</figcaption>
+        </figure>
+      </div>
+    </div>
+
+    <section class="section" id="what" aria-labelledby="what-title">
+      <div class="wrap">
+        <h2 id="what-title">From memory usage to a VPS plan</h2>
+        <dl class="safety does">
+          <div><dt><svg class="icon" aria-hidden="true"><use href="#i-gauge"/></svg>Measure each workload</dt><dd>Start with a read-only audit or collect up to 30 days of history to see peaks and recurring jobs.</dd></div>
+          <div><dt><svg class="icon" aria-hidden="true"><use href="#i-wrench"/></svg>Preview each fix</dt><dd>See proposed changes before applying them. Snugbox saves the previous settings so you can undo a fix.</dd></div>
+          <div><dt><svg class="icon" aria-hidden="true"><use href="#i-trending-down"/></svg>Compare plans that fit</dt><dd>Use measured demand, headroom, storage and available pricing data to evaluate a move.</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="section guide-band" id="guides" aria-labelledby="guides-title">
+      <div class="wrap">
+        <h2 id="guides-title">Linux memory guides</h2>
+        <div class="guide-grid">
+          <a href="/docs/linux-memory-usage/"><strong>Check Linux server memory usage</strong><span>Read available memory, pressure and container usage before resizing.</span></a>
+          <a href="/docs/audit/"><strong>Run your first memory audit</strong><span>Read workload memory, risks and plan suggestions in a single report.</span></a>
+          <a href="/docs/memory-model/"><strong>Understand the RAM estimate</strong><span>See how observed memory, bursts and cache affect the recommendation.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="faq" aria-labelledby="faq-title">
+      <div class="wrap">
+        <h2 id="faq-title">Questions</h2>
+        <div class="faq">
+          <details><summary>How much does it cost?<svg class="icon" aria-hidden="true"><use href="#i-chevron-down"/></svg></summary><p>Nothing. Snugbox is free.</p></details>
+          <details><summary>What Linux systems does it support?<svg class="icon" aria-hidden="true"><use href="#i-chevron-down"/></svg></summary><p>Use Linux 5.4 or newer with cgroup v2. The watcher and reversible fixes also use systemd. See the <a href="/docs/install/">installation guide</a> for requirements.</p></details>
+          <details><summary>Does it send my audit data anywhere?<svg class="icon" aria-hidden="true"><use href="#i-chevron-down"/></svg></summary><p>Snugbox keeps audit history on the server. The agent can query your provider's local metadata service, and alerts can use a webhook you configure. Read the <a href="/docs/data-policy/">data policy</a> for details.</p></details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <div class="wrap">
+      <div class="cols">
+        <div>
+          <a class="brand" href="/"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><use href="#logo-mark"/></svg><svg class="word" viewBox="0 0 4018 1045" aria-hidden="true"><use href="#logo-word"/></svg><span class="visually-hidden">Snugbox home</span></a>
+          <p class="muted foot-tag">Pay for the RAM you use.</p>
+        </div>
+      </div>
+      <p class="fine">&copy; 2026 The Snugbox Authors. <a href="/docs/data-policy/">Data policy</a> <a href="https://github.com/snug-box/snugbox/security/advisories/new">Security</a> <a href="/license.txt">Licence</a> <a href="/licenses.txt">Third-party licences</a></p>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

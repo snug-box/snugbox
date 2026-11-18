@@ -1,0 +1,10 @@
+Snugbox audit
+This box pays for 8 GiB and needs 2.84 GiB. A 4 GiB plan fits.
+Waste 5.16 GiB. Confidence low, from 60 seconds of data.
+  app container 1           1,280 MiB
+  database container 1        628 MiB
+  backup service 1            300 MiB
+  ssh service 1                 6 MiB
+  scheduler service 1         0.3 MiB
+3 risks found.
+snugbox.dev

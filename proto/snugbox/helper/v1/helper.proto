@@ -1,0 +1,337 @@
+syntax = "proto3";
+
+// The protocol between snugbox, snugboxd and snugbox-helper, the root helper
+// of blueprint section 5.4.
+//
+// A client opens a new connection to /run/snugbox/helper.sock and sends one
+// Request. The helper answers with any number of Response messages holding
+// Progress, then one Response holding the result or an Error, and closes the
+// connection. Every message on the socket is a uvarint byte count followed by
+// that many bytes of protobuf. Requests are at most 16 KiB.
+//
+// The helper checks the bounds of every field itself; a request outside them
+// is refused whoever sent it.
+package snugbox.helper.v1;
+
+import "google/protobuf/timestamp.proto";
+
+message Request {
+  oneof kind {
+    // Root only.
+    ApplyRequest apply = 1;
+    // Root, or snugboxd for an automatic undo of a limit fix that failed
+    // verification.
+    UndoRequest undo = 2;
+    // snugboxd, which watches a fix after it is applied, or root.
+    AdvanceRequest advance = 3;
+    ListRequest list = 4;
+    ContainersRequest containers = 5;
+  }
+}
+
+message Response {
+  oneof kind {
+    Progress progress = 1;
+    ApplyResponse apply = 2;
+    UndoResponse undo = 3;
+    AdvanceResponse advance = 4;
+    ListResponse list = 5;
+    ContainersResponse containers = 6;
+    Error error = 7;
+  }
+}
+
+// Fix is one change from the fix catalogue of blueprint section 3.7. Each
+// kind has its own message so the bounds of exactly its fields are checked.
+message Fix {
+  oneof kind {
+    SwapFix swap = 1;
+    OOMProtectionFix oom_protection = 2;
+    ContainerLimitsFix container_limits = 3;
+    ServiceLimitsFix service_limits = 4;
+    HeapCapsFix heap_caps = 5;
+    ScheduleFix schedule = 6;
+  }
+}
+
+// SwapFix makes a swap file in /var/lib/snugbox-helper, turns it on through
+// a systemd swap unit, and turns zswap on when the kernel has it.
+message SwapFix {
+  // A whole number of MiB, from 128 MiB to the smaller of half of RAM and
+  // 4 GiB.
+  uint64 size_bytes = 1;
+  // COMPRESSOR_UNSPECIFIED makes only the swap file, for kernels without
+  // zswap.
+  Compressor compressor = 2;
+  // Turns the zswap shrinker on, which needs Linux 6.8.
+  bool shrinker = 3;
+}
+
+// Compressor is the zswap compressor: zstd packs tighter, lz4 costs less CPU
+// and is chosen when the box is busy.
+enum Compressor {
+  COMPRESSOR_UNSPECIFIED = 0;
+  COMPRESSOR_ZSTD = 1;
+  COMPRESSOR_LZ4 = 2;
+}
+
+// OOMProtectionFix turns on an early out-of-memory killer and keeps sshd and
+// Snugbox out of its reach.
+message OOMProtectionFix {
+  // OOM_DAEMON_UNSPECIFIED means systemd-oomd, which was the only choice
+  // before this field.
+  OOMDaemon daemon = 1;
+}
+
+// OOMDaemon is the early out-of-memory killer an OOMProtectionFix turns on.
+enum OOMDaemon {
+  OOM_DAEMON_UNSPECIFIED = 0;
+  // systemd-oomd kills by memory pressure in the system and user slices.
+  OOM_DAEMON_SYSTEMD_OOMD = 1;
+  // earlyoom kills the largest process when free memory and free swap both
+  // run low; it is for boxes without systemd-oomd.
+  OOM_DAEMON_EARLYOOM = 2;
+}
+
+message ContainerLimit {
+  // The full 64-character container ID.
+  string container_id = 1;
+  // The hard limit, docker update --memory: a multiple of 64 MiB, from
+  // 64 MiB to the box's RAM.
+  uint64 max_bytes = 2;
+  // The soft limit, --memory-reservation: below max_bytes, a whole number of
+  // MiB.
+  uint64 reservation_bytes = 3;
+}
+
+message ContainerLimitsFix {
+  // One to 32 containers, each at most once.
+  repeated ContainerLimit limits = 1;
+  // Writes compose.override.yaml for a Compose project that has none,
+  // as the owner of the project folder.
+  bool persist = 2;
+}
+
+message ServiceLimit {
+  // A unit name ending in .service, other than sshd, systemd's own services
+  // and Snugbox.
+  string unit = 1;
+  // MemoryHigh: a multiple of 64 MiB, at least 64 MiB.
+  uint64 high_bytes = 2;
+  // MemoryMax: a multiple of 64 MiB, above high_bytes, at most the box's RAM.
+  uint64 max_bytes = 3;
+}
+
+message ServiceLimitsFix {
+  // One to 32 services, each at most once.
+  repeated ServiceLimit limits = 1;
+}
+
+// Runtime says which setting a heap cap writes.
+enum Runtime {
+  RUNTIME_UNSPECIFIED = 0;
+  // JAVA_TOOL_OPTIONS=-Xmx<heap>m
+  RUNTIME_JAVA = 1;
+  // NODE_OPTIONS=--max-old-space-size=<heap in MiB>
+  RUNTIME_NODE = 2;
+  // GOMEMLIMIT=<heap>MiB
+  RUNTIME_GO = 3;
+  // MALLOC_ARENA_MAX=2, for threaded Python and Ruby on glibc.
+  RUNTIME_GLIBC = 4;
+}
+
+message HeapCap {
+  string unit = 1;
+  Runtime runtime = 2;
+  // A whole number of MiB from 32 MiB to three quarters of the unit's
+  // MemoryMax, or nine tenths for RUNTIME_GO, whose limit already counts
+  // all the memory the Go runtime manages. Zero for RUNTIME_GLIBC, which
+  // has no size.
+  uint64 heap_bytes = 3;
+}
+
+// HeapCapsFix sets heap caps on services with a drop-in and restarts them,
+// which the person applying it chooses the time for.
+message HeapCapsFix {
+  // One to 16 services, each at most once.
+  repeated HeapCap caps = 1;
+}
+
+// ScheduleFix moves timers whose jobs keep starting in the same minute as
+// another heavy job, each with a drop-in that replaces its OnCalendar with
+// the same time a few minutes earlier. Never later: systemd counts a
+// timer's next run from its last one, so a later time would start the job
+// at once.
+message ScheduleFix {
+  // One to 16 timers, each at most once.
+  repeated TimerShift shifts = 1;
+}
+
+message TimerShift {
+  // A timer unit, such as "backup.timer".
+  string timer = 1;
+  // How many minutes earlier the timer fires, from 1 to 120.
+  uint32 minutes = 2;
+  // The service the timer starts. The helper refuses the move when the
+  // timer starts another unit now.
+  string service = 3;
+}
+
+message ApplyRequest {
+  Fix fix = 1;
+  // Checks the preconditions and returns what would change, changing
+  // nothing and starting no transaction.
+  bool dry_run = 2;
+  // The person accepts limits worked out from less than seven days of
+  // history.
+  bool accept_low_confidence = 3;
+}
+
+// Change is one thing a fix changes, or would change in a dry run.
+message Change {
+  // A file path, a kernel parameter path, or a container or unit setting
+  // such as "web-1 memory".
+  string target = 1;
+  string old_value = 2;
+  string new_value = 3;
+  // old_value and new_value are file contents; empty means no file.
+  bool file = 4;
+  // The person has to make this change; Snugbox only shows it.
+  bool manual = 5;
+}
+
+message ApplyResponse {
+  // Empty for a dry run.
+  string transaction = 1;
+  repeated Change changes = 2;
+  // Plain sentences for the person, such as why compression is unavailable.
+  repeated string notes = 3;
+}
+
+message UndoRequest {
+  // Empty means the newest transaction that can be undone.
+  string transaction = 1;
+  // Why. snugboxd must give one, at most 200 bytes.
+  string reason = 2;
+}
+
+message UndoResponse {
+  string transaction = 1;
+  repeated Change changes = 2;
+  repeated string notes = 3;
+}
+
+// AdvanceRequest moves a transaction on once snugboxd has watched it:
+// verifying to watching after 30 quiet minutes, watching to done after seven
+// days, or watching to reopened when the workload hit trouble.
+message AdvanceRequest {
+  string transaction = 1;
+  State state = 2;
+  // At most 200 bytes. Required for STATE_REOPENED.
+  string reason = 3;
+}
+
+message AdvanceResponse {
+  Transaction transaction = 1;
+}
+
+message ListRequest {}
+
+message ListResponse {
+  // Newest first, at most 100.
+  repeated Transaction transactions = 1;
+}
+
+message Transaction {
+  string id = 1;
+  Fix fix = 2;
+  State state = 3;
+  google.protobuf.Timestamp started = 4;
+  google.protobuf.Timestamp state_since = 5;
+  // The cgroups the fix changed, relative to the cgroup root, such as
+  // "system.slice/nginx.service". snugboxd watches these.
+  repeated string cgroups = 6;
+  repeated Change changes = 7;
+  // Why it was undone, reopened or failed.
+  string reason = 8;
+  // Whether the automatic undo of a failed verification may undo it.
+  bool auto_undo = 9;
+}
+
+// State is where a transaction is in the apply engine of blueprint section
+// 5.6. Each change of state is one journal line.
+enum State {
+  STATE_UNSPECIFIED = 0;
+  STATE_APPROVED = 1;
+  STATE_PREFLIGHT = 2;
+  STATE_SNAPSHOT = 3;
+  STATE_APPLYING = 4;
+  STATE_VERIFYING = 5;
+  STATE_WATCHING = 6;
+  STATE_DONE = 7;
+  STATE_REOPENED = 8;
+  STATE_UNDOING = 9;
+  STATE_UNDONE = 10;
+  STATE_FAILED = 11;
+}
+
+message Progress {
+  State state = 1;
+  string detail = 2;
+}
+
+message ContainersRequest {}
+
+// Container holds the Docker fields snugboxd needs and nothing else: no
+// environment, no command line, no mounts.
+message Container {
+  string id = 1;
+  string name = 2;
+  string image = 3;
+  string compose_project = 4;
+  string compose_service = 5;
+  string compose_working_dir = 6;
+  int64 memory_bytes = 7;
+  int64 memory_reservation_bytes = 8;
+  int32 restart_count = 9;
+  bool running = 10;
+  bool oom_killed = 11;
+  google.protobuf.Timestamp started = 12;
+  // True while Docker waits to start the container again after it exited.
+  bool restarting = 13;
+}
+
+message ContainersResponse {
+  // False when no Docker engine answers.
+  bool docker = 1;
+  repeated Container containers = 2;
+}
+
+// ErrorCode tells the client why a request was refused or failed.
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  // The caller may not send this request.
+  ERROR_CODE_DENIED = 1;
+  // A field is outside its bounds or the message is malformed.
+  ERROR_CODE_INVALID = 2;
+  // snugbox pause is in force.
+  ERROR_CODE_PAUSED = 3;
+  // The box is under memory pressure or had an out-of-memory kill in the
+  // last 10 minutes.
+  ERROR_CODE_PRESSURE = 4;
+  // A precondition of the fix does not hold.
+  ERROR_CODE_PRECONDITION = 5;
+  // Another fix is still in its 30 minutes of verification.
+  ERROR_CODE_BUSY = 6;
+  ERROR_CODE_NOT_FOUND = 7;
+  // The change failed and what it had changed was put back.
+  ERROR_CODE_FAILED = 8;
+  // The change failed and could not be put back; a person must look.
+  ERROR_CODE_STUCK = 9;
+  ERROR_CODE_INTERNAL = 10;
+}
+
+message Error {
+  ErrorCode code = 1;
+  string message = 2;
+}

@@ -1,0 +1,32 @@
+This box pays for 8 GiB and needs 2.84 GiB. A 4 GiB plan fits.
+snug size: 2.34 need + 0.25 headroom + 0.25 cache. Confidence low: Early estimate from 60 seconds of data. Keep watching for a week before changing plans.
+
+PLANS THAT FIT   plan              vCPU    memory     usable        disk  a month    saving  how
+  Vultr          vc2-2c-4gb           2     4 GiB   3.72 GiB   74.51 GiB   $20.00    $28.00  new server
+  Hetzner        CPX22                2  3.73 GiB   3.46 GiB   74.51 GiB   $23.59    $24.41  new server
+  AWS Lightsail  4 GB                 2  3.73 GiB   3.46 GiB   74.51 GiB   $24.00    $24.00  new instance
+  DigitalOcean   Basic 4 GiB          2     4 GiB   3.72 GiB      80 GiB   $24.00    $24.00  new server
+  Akamai Linode  Linode 4GB           2     4 GiB   3.72 GiB      80 GiB   $24.00    $24.00  new server
+  Vultr          vc2-4c-8gb           4     8 GiB   7.44 GiB  149.01 GiB   $40.00     $8.00  new server
+  Hetzner        CPX32                4  7.45 GiB   6.93 GiB  149.01 GiB   $42.59     $5.41  new server
+  AWS Lightsail  8 GB                 2  7.45 GiB   6.93 GiB  149.01 GiB   $44.00     $4.00  new instance
+  DigitalOcean   Basic 8 GiB          4     8 GiB   7.77 GiB     160 GiB   $48.00     $0.00  current plan
+  Akamai Linode  Linode 8GB           4     8 GiB   7.44 GiB     160 GiB   $48.00     $0.00  new server
+  Hetzner        CCX13, dedicated     2  7.45 GiB   6.93 GiB   74.51 GiB   $51.09    -$3.09  new server
+  Vultr          vc2-6c-16gb          6    16 GiB  14.88 GiB  298.02 GiB   $80.00   -$32.00  new server
+  Hetzner        CPX42                8  14.9 GiB  13.86 GiB  298.02 GiB   $82.59   -$34.59  new server
+  AWS Lightsail  16 GB                4  14.9 GiB  13.86 GiB  298.02 GiB   $84.00   -$36.00  new instance
+  DigitalOcean   Basic 16 GiB         8    16 GiB  14.88 GiB     320 GiB   $96.00   -$48.00  resize in place
+  Akamai Linode  Linode 16GB          6    16 GiB  14.88 GiB     320 GiB   $96.00   -$48.00  new server
+  AWS Lightsail  32 GB                8  29.8 GiB  27.72 GiB  596.05 GiB  $164.00  -$116.00  new instance
+
+NOT AVAILABLE TO ORDER plan        vCPU    memory     usable        disk  a month
+  Hetzner              CX23           2  3.73 GiB   3.46 GiB   37.25 GiB    $7.09
+  Hetzner              CAX11, Arm     2  3.73 GiB   3.46 GiB   37.25 GiB    $7.59
+  Hetzner              CX33           4  7.45 GiB   6.93 GiB   74.51 GiB   $10.59
+  Hetzner              CAX21, Arm     4  7.45 GiB   6.93 GiB   74.51 GiB   $13.09
+  Hetzner              CX43           8  14.9 GiB  13.86 GiB  149.01 GiB   $19.09
+
+Usable memory is 93% of the advertised size until Snugbox has measured the plan.
+List prices checked 31 Oct 2026, before VAT. Hetzner adds $0.60 a month for IPv4.
+How DigitalOcean moves a server to a smaller plan: https://docs.digitalocean.com/products/droplets/how-to/resize/

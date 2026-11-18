@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "checked": "2026-10-31",
+  "currency": "USD",
+  "note": "List prices before VAT. Each plan's price was read from the source named on its provider on the checked date.",
+  "fx": [
+    {"currency": "EUR", "usd": "1.1172", "date": "2026-10-30", "source": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"}
+  ],
+  "providers": [
+    {
+      "id": "digitalocean",
+      "name": "DigitalOcean",
+      "source": "https://www.digitalocean.com/pricing/droplets",
+      "resize": "disk_at_least_current",
+      "resize_doc": "https://docs.digitalocean.com/products/droplets/how-to/resize/",
+      "plans": [
+        {"id": "s-1vcpu-512mb-10gb", "label": "Basic 512 MiB", "vcpus": 1, "ram": "512MiB", "disk": "10GiB", "transfer": "500GiB", "monthly": "4.00"},
+        {"id": "s-1vcpu-1gb", "label": "Basic 1 GiB", "vcpus": 1, "ram": "1GiB", "disk": "25GiB", "transfer": "1000GiB", "monthly": "6.00"},
+        {"id": "s-1vcpu-2gb", "label": "Basic 2 GiB", "vcpus": 1, "ram": "2GiB", "disk": "50GiB", "transfer": "2000GiB", "monthly": "12.00"},
+        {"id": "s-2vcpu-2gb", "label": "Basic 2 GiB, 2 vCPU", "vcpus": 2, "ram": "2GiB", "disk": "60GiB", "transfer": "3000GiB", "monthly": "18.00"},
+        {"id": "s-2vcpu-4gb", "label": "Basic 4 GiB", "vcpus": 2, "ram": "4GiB", "disk": "80GiB", "transfer": "4000GiB", "monthly": "24.00"},
+        {"id": "s-4vcpu-8gb", "label": "Basic 8 GiB", "vcpus": 4, "ram": "8GiB", "disk": "160GiB", "transfer": "5000GiB", "monthly": "48.00"},
+        {"id": "s-8vcpu-16gb", "label": "Basic 16 GiB", "vcpus": 8, "ram": "16GiB", "disk": "320GiB", "transfer": "6000GiB", "monthly": "96.00"}
+      ]
+    },
+    {
+      "id": "vultr",
+      "name": "Vultr",
+      "source": "https://api.vultr.com/v2/plans?type=vc2",
+      "resize": "no_downgrade",
+      "resize_doc": "https://docs.vultr.com/support/products/compute/can-i-make-my-vultr-compute-instance-smaller",
+      "plans": [
+        {"id": "vc2-1c-0.5gb", "label": "vc2-1c-0.5gb", "vcpus": 1, "ram": "512MiB", "disk": "10GB", "transfer": "512GB", "monthly": "3.50"},
+        {"id": "vc2-1c-1gb", "label": "vc2-1c-1gb", "vcpus": 1, "ram": "1024MiB", "disk": "25GB", "transfer": "1024GB", "monthly": "5.00"},
+        {"id": "vc2-1c-2gb", "label": "vc2-1c-2gb", "vcpus": 1, "ram": "2048MiB", "disk": "55GB", "transfer": "2048GB", "monthly": "10.00"},
+        {"id": "vc2-2c-2gb", "label": "vc2-2c-2gb", "vcpus": 2, "ram": "2048MiB", "disk": "65GB", "transfer": "3072GB", "monthly": "15.00"},
+        {"id": "vc2-2c-4gb", "label": "vc2-2c-4gb", "vcpus": 2, "ram": "4096MiB", "disk": "80GB", "transfer": "3072GB", "monthly": "20.00"},
+        {"id": "vc2-4c-8gb", "label": "vc2-4c-8gb", "vcpus": 4, "ram": "8192MiB", "disk": "160GB", "transfer": "4096GB", "monthly": "40.00"},
+        {"id": "vc2-6c-16gb", "label": "vc2-6c-16gb", "vcpus": 6, "ram": "16384MiB", "disk": "320GB", "transfer": "5120GB", "monthly": "80.00"}
+      ]
+    },
+    {
+      "id": "linode",
+      "name": "Akamai Linode",
+      "source": "https://api.linode.com/v4/linode/types",
+      "resize": "shrink_disk_first",
+      "resize_doc": "https://techdocs.akamai.com/cloud-computing/docs/resize-a-compute-instance",
+      "plans": [
+        {"id": "g6-nanode-1", "label": "Nanode 1GB", "vcpus": 1, "ram": "1024MiB", "disk": "25600MiB", "transfer": "1000GB", "monthly": "5.00"},
+        {"id": "g6-standard-1", "label": "Linode 2GB", "vcpus": 1, "ram": "2048MiB", "disk": "51200MiB", "transfer": "2000GB", "monthly": "12.00"},
+        {"id": "g6-standard-2", "label": "Linode 4GB", "vcpus": 2, "ram": "4096MiB", "disk": "81920MiB", "transfer": "4000GB", "monthly": "24.00"},
+        {"id": "g6-standard-4", "label": "Linode 8GB", "vcpus": 4, "ram": "8192MiB", "disk": "163840MiB", "transfer": "5000GB", "monthly": "48.00"},
+        {"id": "g6-standard-6", "label": "Linode 16GB", "vcpus": 6, "ram": "16384MiB", "disk": "327680MiB", "transfer": "8000GB", "monthly": "96.00"}
+      ]
+    },
+    {
+      "id": "hetzner",
+      "name": "Hetzner",
+      "source": "https://docs.hetzner.com/general/infrastructure-and-availability/price-adjustment/",
+      "region_note": "Germany and Finland prices",
+      "ipv4_monthly": "0.60",
+      "resize": "disk_at_least_current",
+      "resize_doc": "https://docs.hetzner.com/cloud/servers/faq/",
+      "plans": [
+        {"id": "cpx02", "label": "CPX02", "vcpus": 1, "ram": "1GB", "disk": "20GB", "transfer": "20TB", "monthly_eur_with_ipv4": "6.49", "source": "https://www.hetzner.com/cloud/regular-performance/"},
+        {"id": "cpx12", "label": "CPX12", "vcpus": 1, "ram": "2GB", "disk": "40GB", "transfer": "20TB", "monthly_eur_with_ipv4": "11.99", "source": "https://www.hetzner.com/cloud/regular-performance/"},
+        {"id": "cx23", "label": "CX23", "vcpus": 2, "ram": "4GB", "disk": "40GB", "transfer": "20TB", "monthly": "6.49", "available": false},
+        {"id": "cax11", "label": "CAX11, Arm", "vcpus": 2, "arm": true, "ram": "4GB", "disk": "40GB", "transfer": "20TB", "monthly": "6.99", "available": false},
+        {"id": "cpx22", "label": "CPX22", "vcpus": 2, "ram": "4GB", "disk": "80GB", "transfer": "20TB", "monthly": "22.99"},
+        {"id": "cx33", "label": "CX33", "vcpus": 4, "ram": "8GB", "disk": "80GB", "transfer": "20TB", "monthly": "9.99", "available": false},
+        {"id": "cax21", "label": "CAX21, Arm", "vcpus": 4, "arm": true, "ram": "8GB", "disk": "80GB", "transfer": "20TB", "monthly": "12.49", "available": false},
+        {"id": "cpx32", "label": "CPX32", "vcpus": 4, "ram": "8GB", "disk": "160GB", "transfer": "20TB", "monthly": "41.99"},
+        {"id": "ccx13", "label": "CCX13, dedicated", "vcpus": 2, "dedicated": true, "ram": "8GB", "disk": "80GB", "transfer": "20TB", "monthly": "50.49"},
+        {"id": "cx43", "label": "CX43", "vcpus": 8, "ram": "16GB", "disk": "160GB", "transfer": "20TB", "monthly": "18.49", "available": false},
+        {"id": "cpx42", "label": "CPX42", "vcpus": 8, "ram": "16GB", "disk": "320GB", "transfer": "20TB", "monthly": "81.99"}
+      ]
+    },
+    {
+      "id": "aws",
+      "name": "AWS Lightsail",
+      "source": "https://aws.amazon.com/lightsail/pricing/",
+      "resize": "no_downgrade",
+      "resize_doc": "https://docs.aws.amazon.com/lightsail/latest/userguide/lightsail-how-to-create-larger-instance-from-snapshot-using-aws-cli.html",
+      "transfer_counts_inbound": true,
+      "plans": [
+        {"id": "ls-0.5", "label": "0.5 GB", "vcpus": 2, "ram": "0.5GB", "disk": "20GB", "transfer": "1TB", "monthly": "5.00"},
+        {"id": "ls-1", "label": "1 GB", "vcpus": 2, "ram": "1GB", "disk": "40GB", "transfer": "2TB", "monthly": "7.00"},
+        {"id": "ls-2", "label": "2 GB", "vcpus": 2, "ram": "2GB", "disk": "60GB", "transfer": "3TB", "monthly": "12.00"},
+        {"id": "ls-4", "label": "4 GB", "vcpus": 2, "ram": "4GB", "disk": "80GB", "transfer": "4TB", "monthly": "24.00"},
+        {"id": "ls-8", "label": "8 GB", "vcpus": 2, "ram": "8GB", "disk": "160GB", "transfer": "5TB", "monthly": "44.00"},
+        {"id": "ls-16", "label": "16 GB", "vcpus": 4, "ram": "16GB", "disk": "320GB", "transfer": "6TB", "monthly": "84.00"},
+        {"id": "ls-32", "label": "32 GB", "vcpus": 8, "ram": "32GB", "disk": "640GB", "transfer": "7TB", "monthly": "164.00"}
+      ]
+    }
+  ]
+}

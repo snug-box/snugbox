@@ -1,0 +1,419 @@
+{
+  "schema": "https://snugbox.dev/schema/audit/v1",
+  "version": "1.0.0",
+  "host": "web-1",
+  "started": "2026-10-31T09:00:00Z",
+  "ended": "2026-10-31T09:01:00Z",
+  "window_seconds": 60,
+  "samples": 31,
+  "root": true,
+  "headline": "This box pays for 8 GiB and needs 2.84 GiB. A 4 GiB plan fits.",
+  "machine": {
+    "kernel": "6.8.0-45-generic",
+    "os": "Ubuntu 24.04.1 LTS",
+    "virtualization": "kvm",
+    "cpus": 4,
+    "mem_total_bytes": 8343552000,
+    "swap_bytes": 0,
+    "zswap_enabled": false,
+    "zswap_available": false,
+    "transparent_hugepages": "madvise",
+    "overcommit_memory": 0,
+    "oom_daemon": "",
+    "oom_policy": null,
+    "cgroup_v2": true,
+    "uptime_seconds": 864060
+  },
+  "provider": {
+    "id": "digitalocean",
+    "region": "fra1",
+    "from_metadata": true
+  },
+  "estimate": {
+    "need_bytes": 2508500992,
+    "need_from_hard": false,
+    "headroom_bytes": 268435456,
+    "headroom_rule": "minimum",
+    "peak_addition_bytes": 0,
+    "cache_bytes": 268435456,
+    "snug_bytes": 3045371904,
+    "confidence": "low",
+    "coverage": 1,
+    "cache_overestimate": false,
+    "upward": {
+      "any": false,
+      "pressure_full_share": 0,
+      "pressure_since_boot": true,
+      "recent_kills": 0,
+      "undated_kills": 0,
+      "swap_in_intervals": 0,
+      "intervals": 30
+    }
+  },
+  "advice": {
+    "currency": "USD",
+    "catalogue_checked": "2026-10-31",
+    "pays_for_bytes": 8589934592,
+    "pays_for_exact": true,
+    "waste_bytes": 5544562688,
+    "size_class_bytes": 4294967296,
+    "withheld": false,
+    "current_plan": {
+      "provider": "digitalocean",
+      "id": "s-4vcpu-8gb",
+      "label": "Basic 8 GiB",
+      "vcpus": 4,
+      "ram_bytes": 8589934592,
+      "usable_bytes": 7988639170,
+      "disk_bytes": 171798691840,
+      "monthly_cents": 4800,
+      "converted_from_eur": false,
+      "available": true,
+      "arm": false
+    },
+    "plans": [
+      {
+        "provider": "vultr",
+        "id": "vc2-2c-4gb",
+        "label": "vc2-2c-4gb",
+        "vcpus": 2,
+        "ram_bytes": 4294967296,
+        "usable_bytes": 3994319585,
+        "disk_bytes": 80000000000,
+        "monthly_cents": 2000,
+        "converted_from_eur": false,
+        "available": true,
+        "arm": false,
+        "move": "new server",
+        "saving_cents": 2800
+      },
+      {
+        "provider": "hetzner",
+        "id": "cpx22",
+        "label": "CPX22",
+        "vcpus": 2,
+        "ram_bytes": 4000000000,
+        "usable_bytes": 3720000000,
+        "disk_bytes": 80000000000,
+        "monthly_cents": 2359,
+        "converted_from_eur": false,
+        "available": true,
+        "arm": false,
+        "move": "new server",
+        "saving_cents": 2441
+      },
+      {
+        "provider": "aws",
+        "id": "ls-4",
+        "label": "4 GB",
+        "vcpus": 2,
+        "ram_bytes": 4000000000,
+        "usable_bytes": 3720000000,
+        "disk_bytes": 80000000000,
+        "monthly_cents": 2400,
+        "converted_from_eur": false,
+        "available": true,
+        "arm": false,
+        "move": "new instance",
+        "saving_cents": 2400
+      },
+      {
+        "provider": "digitalocean",
+        "id": "s-2vcpu-4gb",
+        "label": "Basic 4 GiB",
+        "vcpus": 2,
+        "ram_bytes": 4294967296,
+        "usable_bytes": 3994319585,
+        "disk_bytes": 85899345920,
+        "monthly_cents": 2400,
+        "converted_from_eur": false,
+        "available": true,
+        "arm": false,
+        "move": "new server",
+        "saving_cents": 2400
+      },
+      {
+        "provider": "linode",
+        "id": "g6-standard-2",
+        "label": "Linode 4GB",
+        "vcpus": 2,
+        "ram_bytes": 4294967296,
+        "usable_bytes": 3994319585,
+        "disk_bytes": 85899345920,
+        "monthly_cents": 2400,
+        "converted_from_eur": false,
+        "available": true,
+        "arm": false,
+        "move": "new server",
+        "saving_cents": 2400
+      }
+    ],
+    "unavailable": [
+      {
+        "provider": "hetzner",
+        "id": "cx23",
+        "label": "CX23",
+        "vcpus": 2,
+        "ram_bytes": 4000000000,
+        "usable_bytes": 3720000000,
+        "disk_bytes": 40000000000,
+        "monthly_cents": 709,
+        "converted_from_eur": false,
+        "available": false,
+        "arm": false,
+        "move": "new server",
+        "saving_cents": 4091
+      },
+      {
+        "provider": "hetzner",
+        "id": "cax11",
+        "label": "CAX11, Arm",
+        "vcpus": 2,
+        "ram_bytes": 4000000000,
+        "usable_bytes": 3720000000,
+        "disk_bytes": 40000000000,
+        "monthly_cents": 759,
+        "converted_from_eur": false,
+        "available": false,
+        "arm": true,
+        "move": "new server",
+        "saving_cents": 4041
+      },
+      {
+        "provider": "hetzner",
+        "id": "cx33",
+        "label": "CX33",
+        "vcpus": 4,
+        "ram_bytes": 8000000000,
+        "usable_bytes": 7440000000,
+        "disk_bytes": 80000000000,
+        "monthly_cents": 1059,
+        "converted_from_eur": false,
+        "available": false,
+        "arm": false,
+        "move": "new server",
+        "saving_cents": 3741
+      },
+      {
+        "provider": "hetzner",
+        "id": "cax21",
+        "label": "CAX21, Arm",
+        "vcpus": 4,
+        "ram_bytes": 8000000000,
+        "usable_bytes": 7440000000,
+        "disk_bytes": 80000000000,
+        "monthly_cents": 1309,
+        "converted_from_eur": false,
+        "available": false,
+        "arm": true,
+        "move": "new server",
+        "saving_cents": 3491
+      },
+      {
+        "provider": "hetzner",
+        "id": "cx43",
+        "label": "CX43",
+        "vcpus": 8,
+        "ram_bytes": 16000000000,
+        "usable_bytes": 14880000000,
+        "disk_bytes": 160000000000,
+        "monthly_cents": 1909,
+        "converted_from_eur": false,
+        "available": false,
+        "arm": false,
+        "move": "new server",
+        "saving_cents": 2891
+      }
+    ]
+  },
+  "risks": [
+    {
+      "kind": "no_swap",
+      "text": "No swap"
+    },
+    {
+      "kind": "no_oom_protection",
+      "text": "No early out-of-memory protection, such as systemd-oomd or earlyoom"
+    },
+    {
+      "kind": "unlimited_containers",
+      "text": "2 of 2 containers have no memory limit: shop-app-1, shop-db-1",
+      "count": 2,
+      "of": 2,
+      "names": [
+        "shop-app-1",
+        "shop-db-1"
+      ]
+    }
+  ],
+  "fixes": [
+    {
+      "number": 1,
+      "kind": "container-limits",
+      "title": "Limits for shop-app-1",
+      "risk": "medium",
+      "needs_restart": false,
+      "limits": [
+        {
+          "workload": "/system.slice/docker-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.scope",
+          "name": "shop-app-1",
+          "max_bytes": 1744830464,
+          "soft_bytes": 1342177280,
+          "low_confidence": true
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "kind": "service-limits",
+      "title": "Limits for backup.service",
+      "risk": "medium",
+      "needs_restart": false,
+      "limits": [
+        {
+          "workload": "/system.slice/backup.service",
+          "name": "backup.service",
+          "max_bytes": 469762048,
+          "soft_bytes": 402653184,
+          "low_confidence": true
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "kind": "oom-protection",
+      "title": "Early out-of-memory protection, systemd-oomd",
+      "risk": "medium",
+      "needs_restart": false
+    },
+    {
+      "number": 4,
+      "kind": "heap-caps",
+      "title": "Heap caps for shop-app-1, after a restart",
+      "risk": "medium to high",
+      "needs_restart": true,
+      "heaps": [
+        {
+          "workload": "/system.slice/docker-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.scope",
+          "name": "shop-app-1",
+          "runtime": "node",
+          "env": "NODE_OPTIONS",
+          "setting": "--max-old-space-size=1248",
+          "limit_bytes": 1744830464
+        }
+      ]
+    }
+  ],
+  "workloads": [
+    {
+      "id": "/system.slice/backup.service",
+      "kind": "service",
+      "name": "backup.service",
+      "programs": [
+        "restic"
+      ],
+      "limit_bytes": null,
+      "memory_peak_bytes": 314572800,
+      "oom_kills_in_window": 0,
+      "pressured": false,
+      "working_set_p95_bytes": 314572800,
+      "working_set_p99_bytes": 314572800,
+      "working_set_p999_bytes": 314572800,
+      "working_set_max_bytes": 314572800,
+      "hard_max_bytes": 314572800
+    },
+    {
+      "id": "/system.slice/cron.service",
+      "kind": "service",
+      "name": "cron.service",
+      "programs": [
+        "cron"
+      ],
+      "limit_bytes": null,
+      "memory_peak_bytes": 307200,
+      "oom_kills_in_window": 0,
+      "pressured": false,
+      "working_set_p95_bytes": 307200,
+      "working_set_p99_bytes": 307200,
+      "working_set_p999_bytes": 307200,
+      "working_set_max_bytes": 307200,
+      "hard_max_bytes": 307200
+    },
+    {
+      "id": "/system.slice/docker-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.scope",
+      "kind": "container",
+      "name": "shop-app-1",
+      "programs": [
+        "node"
+      ],
+      "runtime": "node",
+      "limit_bytes": null,
+      "memory_peak_bytes": 1677721600,
+      "oom_kills_in_window": 0,
+      "pressured": false,
+      "working_set_p95_bytes": 1342177280,
+      "working_set_p99_bytes": 1342177280,
+      "working_set_p999_bytes": 1342177280,
+      "working_set_max_bytes": 1342177280,
+      "hard_max_bytes": 1237319680
+    },
+    {
+      "id": "/system.slice/docker-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.scope",
+      "kind": "container",
+      "name": "shop-db-1",
+      "programs": [
+        "postgres"
+      ],
+      "database": "PostgreSQL",
+      "limit_bytes": null,
+      "memory_peak_bytes": 1077936128,
+      "oom_kills_in_window": 0,
+      "pressured": false,
+      "working_set_p95_bytes": 658505728,
+      "working_set_p99_bytes": 658505728,
+      "working_set_p999_bytes": 658505728,
+      "working_set_max_bytes": 658505728,
+      "hard_max_bytes": 448790528
+    },
+    {
+      "id": "/system.slice/ssh.service",
+      "kind": "service",
+      "name": "ssh.service",
+      "programs": [
+        "sshd"
+      ],
+      "limit_bytes": null,
+      "memory_peak_bytes": 6291456,
+      "oom_kills_in_window": 0,
+      "pressured": false,
+      "working_set_p95_bytes": 6291456,
+      "working_set_p99_bytes": 6291456,
+      "working_set_p999_bytes": 6291456,
+      "working_set_max_bytes": 6291456,
+      "hard_max_bytes": 6291456
+    }
+  ],
+  "idle": [],
+  "kernel_other": {
+    "working_set_p95_bytes": 186646528,
+    "working_set_p99_bytes": 186646528,
+    "working_set_p999_bytes": 186646528,
+    "working_set_max_bytes": 186646528,
+    "hard_max_bytes": 186646528
+  },
+  "data_quality": {
+    "gap_seconds": 0,
+    "unread": [
+      {
+        "what": "the kernel log at /dev/kmsg",
+        "why": "no log, so kill times are unknown"
+      }
+    ],
+    "notes": [
+      "Sampled for 60 seconds, every 2 seconds, with no gaps (31 samples).",
+      "Kernel 6.8, cgroup v2, pressure files and memory.peak.",
+      "Could not read the kernel log at /dev/kmsg: no log, so kill times are unknown.",
+      "Provider and region came from the cloud metadata service at 169.254.169.254. Skip it with --offline."
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+# Advisories Trivy reports for the release that don't apply to it, each with
+# the reason and a date to look again. govulncheck, which follows the calls,
+# runs in CI as well and finds none of these reachable.
+
+# golang.org/x/crypto/openpgp is deprecated and unmaintained. No Snugbox
+# binary imports it; x/crypto reaches the release only through go-tuf's
+# nacl/secretbox and scrypt. The advisory's only fix is an untagged commit
+# after v0.58.0; take the next tagged x/crypto and drop this line.
+GO-2026-5932 exp:2027-05-01

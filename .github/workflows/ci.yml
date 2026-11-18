@@ -1,0 +1,364 @@
+# Checks every change: lint, the protobuf schema, tests with the race
+# detector, fuzzing, known vulnerabilities, licences and secrets, then a full
+# snapshot release that is scanned, installed and driven as root on the
+# runner, which is a virtual machine with systemd.
+#
+# Every action is pinned to a full commit; Renovate proposes new ones.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Modules are tidy and match go.sum
+        run: |
+          go mod tidy -diff
+          go mod verify
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+      - name: golangci-lint with the live tests
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+          args: --build-tags integration
+          skip-save-cache: true
+      - name: golangci-lint for the Windows build used in development
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        env:
+          GOOS: windows
+        with:
+          version: v2.15.0
+          skip-save-cache: true
+      - name: shellcheck
+        run: shellcheck -s sh packaging/install.sh packaging/scripts/*.sh test/*.sh test/*/*.sh
+
+  proto:
+    name: Protobuf
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The base commit, to see whether it has a schema to compare with.
+          fetch-depth: 0
+      - name: Does the base commit have a schema
+        id: base
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if git ls-tree -d --name-only "$BASE" proto | grep -q .; then
+            echo "schema=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "The base commit has no proto folder, so there is nothing this change can break."
+          fi
+      - name: buf lint, format and breaking
+        uses: bufbuild/buf-action@85aebf73123b5c15fd5528aaecbf9129cddf7fa7 # v1.6.0
+        with:
+          # renovate: datasource=github-releases depName=bufbuild/buf extractVersion=^v(?<version>.+)$
+          version: 1.75.0
+          lint: true
+          format: true
+          breaking: ${{ steps.base.outputs.schema == 'true' }}
+          push: false
+          archive: false
+          pr_comment: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: The generated code matches the schema
+        run: |
+          # Without a version, go install takes protoc-gen-go at the version go.mod pins.
+          go install google.golang.org/protobuf/cmd/protoc-gen-go
+          buf generate
+          git diff --exit-code -- gen
+
+  test:
+    name: Test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Unit tests with the race detector
+        run: go test -race -count=1 -coverprofile=coverage.out ./...
+      - name: Coverage
+        run: go tool cover -func=coverage.out | tail -n 1
+
+  fuzz:
+    name: Fuzz
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Every fuzz target for 30 seconds
+        run: sh test/fuzz.sh
+        env:
+          FUZZTIME: 30s
+      - name: Keep the inputs that failed
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fuzz-failures
+          path: agent/**/testdata/fuzz/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  security:
+    name: Vulnerabilities, licences and secrets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: govulncheck, which reports only vulnerabilities the code can reach
+        env:
+          # renovate: datasource=go depName=golang.org/x/vuln
+          GOVULNCHECK_VERSION: v1.9.0
+        run: go run "golang.org/x/vuln/cmd/govulncheck@$GOVULNCHECK_VERSION" ./...
+      - name: No dependency under a copyleft or unknown licence
+        env:
+          # renovate: datasource=go depName=github.com/google/go-licenses/v2
+          GO_LICENSES_VERSION: v2.0.1
+        run: go run "github.com/google/go-licenses/v2@$GO_LICENSES_VERSION" check ./... --disallowed_types=forbidden,restricted,unknown
+      - name: gitleaks over the whole history
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSL --proto '=https' -o "$RUNNER_TEMP/$archive" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$archive"
+          echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
+          "$RUNNER_TEMP/gitleaks" git --redact --no-banner --exit-code 1 .
+
+  dependency-review:
+    name: Dependency review
+    # Dependency review needs GitHub Advanced Security on a private
+    # repository; there the licence and vulnerability checks above still run.
+    if: github.event_name == 'pull_request' && !github.event.repository.private
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: low
+          # MPL-2.0 is copyleft per file only; rapid, used in tests and never
+          # compiled into a binary, is under it.
+          allow-licenses: Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, MIT, MPL-2.0
+
+  reproducible:
+    name: Rebuilt elsewhere from a cold cache, the release is the same
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          distribution: goreleaser
+          version: v2.19.0
+          install-only: true
+      - name: Build twice, in two folders, and compare every checksum
+        # One worker keeps the order of files in each archive fixed; see the
+        # top of .goreleaser.yaml.
+        run: |
+          goreleaser release --snapshot --clean --skip=sign,sbom --parallelism 1
+          git clone --quiet . "$RUNNER_TEMP/again"
+          go clean -cache
+          (cd "$RUNNER_TEMP/again" && goreleaser release --snapshot --clean --skip=sign,sbom --parallelism 1)
+          diff dist/checksums.txt "$RUNNER_TEMP/again/dist/checksums.txt"
+          echo "Both builds gave the same bytes for every file:"
+          cat dist/checksums.txt
+
+  release:
+    name: Snapshot release, installed and tested
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          # Built the way a release is built, with no cache.
+          cache: false
+      - uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+      - name: Build every archive and package, with SBOMs
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          distribution: goreleaser
+          version: v2.19.0
+          args: release --snapshot --clean --skip=sign --parallelism 1
+      - name: Grype finds no fixable vulnerability in the release
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+        with:
+          path: dist
+          fail-build: true
+          only-fixed: true
+          severity-cutoff: low
+          output-format: table
+      - name: Trivy finds none either
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.1
+          scan-type: rootfs
+          scan-ref: dist
+          scanners: vuln
+          ignore-unfixed: true
+          # Each advisory listed there says why it doesn't apply and when
+          # to look again.
+          trivyignores: .trivyignore
+          exit-code: "1"
+      - name: The installer stops at every mismatch
+        env:
+          COSIGN_SHA256: 424e2c97d0b45fd7a6b608a87f090f35633f4c23ece5f092d48bba11aaf4bbfa
+        run: |
+          cosign="$RUNNER_TEMP/cosign-linux-amd64"
+          curl -fsSL --proto '=https' -o "$cosign" https://github.com/sigstore/cosign/releases/download/v3.1.4/cosign-linux-amd64
+          echo "$COSIGN_SHA256  $cosign" | sha256sum -c -
+          sudo sh test/install/run.sh "$cosign"
+      - name: The release check passes the snapshot and fails on each fault a release can have
+        run: sh test/release/run.sh "$RUNNER_TEMP/cosign-linux-amd64" dist
+      - name: Build the helper's live tests
+        # One test runs the binary again as the snugbox user, who can't
+        # reach the runner's home folder.
+        run: |
+          go test -tags integration -c -o "$RUNNER_TEMP/helper.test" ./agent/internal/helper
+          sudo install -D -m 0755 "$RUNNER_TEMP/helper.test" /usr/local/libexec/snugbox-tests/helper.test
+      - name: A month of history for 50 workloads, for the budget check
+        # The budgets hold on a store as full as a month of watching leaves
+        # it; on an empty one they hid a watcher over both.
+        env:
+          SNUGBOX_SOAK: "1"
+          SNUGBOX_SOAK_DB: ${{ runner.temp }}/history.db
+        run: go test -count=1 -run TestThirtyDaysOfFiftyWorkloads ./agent/internal/store
+      - name: The runner's swap file off and out of /etc/fstab, like the boxes the swap fix is for
+        # The fix leaves alone a box whose fstab lists a swap area, even
+        # one that is off.
+        run: |
+          sudo swapoff -a
+          sudo sed -i -E '/^[^#[:space:]][^[:space:]]*[[:space:]]+[^[:space:]]+[[:space:]]+swap([[:space:]]|$)/d' /etc/fstab
+          sudo systemctl daemon-reload
+          echo "Swap areas:"
+          swapon --show
+          echo "Swap units:"
+          # systemctl exits 1 when it has no unit to list, as here.
+          systemctl list-unit-files --type=swap --no-legend || true
+      - name: earlyoom, systemd-oomd and btrfs-progs for their live tests, with both daemons off
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends earlyoom systemd-oomd btrfs-progs
+          sudo systemctl disable --now earlyoom.service
+          # Ubuntu's systemd-oomd turns itself on for every login, so it is
+          # masked until its own test, after the package is gone.
+          sudo systemctl mask --runtime --now systemd-oomd.socket systemd-oomd.service
+      - name: Install, run, upgrade, remove and purge the .deb, with the live tests and the budgets in between
+        env:
+          # The live tests drive the packaged helper; the automatic undo is
+          # the watcher's, end to end; the budget check holds the watcher
+          # and the helper to blueprint section 9.4 with 50 workloads and a
+          # month of their history, for 5 minutes on a pull request and 10
+          # on main.
+          DURING: /usr/local/libexec/snugbox-tests/helper.test -test.v -test.count=1 -test.run TestLive -test.skip TestLiveOOMD && sh test/autoundo/run.sh && sh test/budget/run.sh ${{ github.event_name == 'pull_request' && 5 || 10 }} ${{ runner.temp }}/history.db
+        run: sudo --preserve-env=DURING sh test/package/run.sh dist/snugbox_*_amd64.deb
+      - name: An install like install.sh's, through watch install and uninstall
+        run: sudo sh test/watch/run.sh dist/snugbox_*_linux_amd64.tar.gz
+      - name: A box that isn't enrolled sends nothing but the metadata request, and nothing at all offline
+        run: sudo sh test/net/run.sh dist/snugbox_*_linux_amd64.tar.gz
+      - name: Secrets planted where Snugbox looks are in nothing it writes or logs
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSL --proto '=https' -o "$RUNNER_TEMP/$archive" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$archive"
+          echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
+          sudo install -m 0755 "$RUNNER_TEMP/gitleaks" /usr/local/bin/gitleaks
+          sudo sh test/secrets/run.sh dist/snugbox_*_linux_amd64.tar.gz
+      - name: A script install updated by snugbox self-update through a test TUF repository, and the refusals
+        run: |
+          sh test/update/prepare.sh "$RUNNER_TEMP/update"
+          sudo sh test/update/run.sh "$RUNNER_TEMP/update"
+      - name: systemd-oomd turned on and off by the fix
+        run: |
+          sudo systemctl unmask --runtime systemd-oomd.socket systemd-oomd.service
+          sudo systemctl stop systemd-oomd.socket systemd-oomd.service
+          sudo /usr/local/libexec/snugbox-tests/helper.test -test.v -test.count=1 -test.run TestLiveOOMD
+      - name: Keep the snapshot
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: snapshot
+          path: |
+            dist/*.tar.gz
+            dist/*.deb
+            dist/*.rpm
+            dist/*.json
+            dist/checksums.txt
+          # A private repository's Actions storage is small.
+          retention-days: ${{ github.event.repository.private && 1 || 7 }}

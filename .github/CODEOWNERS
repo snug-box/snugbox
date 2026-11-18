@@ -1,0 +1,23 @@
+# Who reviews what. Branch protection requires a code owner's approval, and
+# the two-reviews check asks for two approvals when code that runs as root,
+# or decides what runs as root, changes (blueprint section 6.3).
+#
+# One maintainer for now; add the second reviewer's handle on each line
+# below when they join.
+
+*                           @devpilotX
+
+# Runs as root or decides what root does.
+/agent/internal/fix/        @devpilotX
+/agent/internal/helper/     @devpilotX
+/agent/internal/helperapi/  @devpilotX
+/agent/internal/journal/    @devpilotX
+/agent/internal/safefs/     @devpilotX
+/agent/internal/units/      @devpilotX
+/agent/cmd/snugbox-helper/  @devpilotX
+/proto/                     @devpilotX
+/packaging/                 @devpilotX
+
+# The build and release pipeline.
+/.github/                   @devpilotX
+/.goreleaser.yaml           @devpilotX

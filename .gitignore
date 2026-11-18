@@ -1,0 +1,24 @@
+# Build output
+/dist/
+/bin/
+*.test
+*.out
+coverage.*
+
+# Share cards written by snugbox audit --share in the working folder
+snugbox-card.svg
+snugbox-card.txt
+
+# Go fuzzing writes failing inputs under testdata/fuzz; those are committed on
+# purpose once a bug is fixed, so only the cache is ignored.
+/.cache/
+
+# Editors and operating systems
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local working notes
+.kiro/state/

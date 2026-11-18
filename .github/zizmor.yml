@@ -1,0 +1,10 @@
+# zizmor checks the workflows (zizmor --persona=auditor .github/workflows).
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        # slsa-github-generator checks its own identity from its version tag
+        # and refuses to run when called by commit, so it alone is pinned
+        # to a tag. Everything else is pinned to a commit.
+        "slsa-framework/slsa-github-generator/*": ref-pin
+        "*": hash-pin
